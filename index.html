@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rubén Gili Ramírez — Desarrollador</title>
+<meta name="description" content="Portfolio de Rubén Gili Ramírez, estudiante de DAM especializado en frontend y bases de datos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0a12;
+    --panel: #12141f;
+    --panel-line: #22263a;
+    --cyan: #2de2ff;
+    --magenta: #ff2bd6;
+    --text: #e8ecf5;
+    --text-dim: #8b8fa3;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk', sans-serif;
+    overflow-x:hidden;
+  }
+
+  h1,h2,h3,.mono-label{
+    font-family:'Rajdhani', sans-serif;
+    font-weight:700;
+    letter-spacing:0.02em;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important; }
+  }
+
+  a{ color:inherit; text-decoration:none; }
+
+  ::selection{ background:var(--magenta); color:#fff; }
+
+  a:focus-visible, button:focus-visible{
+    outline:2px solid var(--cyan);
+    outline-offset:3px;
+  }
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:24px clamp(20px,5vw,64px);
+    mix-blend-mode:difference;
+  }
+  nav .brand{ font-size:1.05rem; font-weight:700; }
+  nav ul{ list-style:none; display:flex; gap:clamp(16px,3vw,40px); font-size:0.92rem; }
+  nav ul a{ position:relative; padding-bottom:4px; }
+  nav ul a::after{
+    content:''; position:absolute; left:0; bottom:0; width:0; height:1px;
+    background:var(--cyan); transition:width 0.3s ease;
+  }
+  nav ul a:hover::after{ width:100%; }
+
+  /* ---------- HERO ---------- */
+  #hero{
+    position:relative;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    overflow:hidden;
+  }
+  #hero-canvas{
+    position:absolute; inset:0; z-index:0;
+  }
+  .hero-inner{
+    position:relative; z-index:2;
+    padding:0 clamp(20px,5vw,64px);
+    width:100%;
+  }
+  .hero-eyebrow{
+    color:var(--cyan);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:0.95rem;
+    margin-bottom:18px;
+    display:inline-block;
+  }
+  .hero-name{
+    font-size:clamp(3rem, 9vw, 7.2rem);
+    line-height:0.95;
+    text-transform:uppercase;
+    background:linear-gradient(100deg, var(--text) 40%, var(--cyan) 70%, var(--magenta) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .hero-role{
+    margin-top:22px;
+    font-size:clamp(1.1rem, 2.2vw, 1.5rem);
+    color:var(--text-dim);
+    max-width:640px;
+  }
+  .hero-scroll{
+    position:absolute; bottom:40px; left:clamp(20px,5vw,64px);
+    z-index:2;
+    display:flex; align-items:center; gap:12px;
+    color:var(--text-dim); font-size:0.85rem;
+  }
+  .hero-scroll .line{
+    width:1px; height:38px; background:linear-gradient(var(--cyan), transparent);
+    animation:scrollpulse 2s ease-in-out infinite;
+  }
+  @keyframes scrollpulse{
+    0%,100%{ opacity:0.3; } 50%{ opacity:1; }
+  }
+
+  section{ position:relative; padding:clamp(80px,12vw,140px) clamp(20px,5vw,64px); }
+
+  .section-head{
+    display:flex; align-items:baseline; gap:18px; margin-bottom:56px;
+  }
+  .section-num{ color:var(--magenta); font-size:0.95rem; font-family:'Space Grotesk',sans-serif; }
+  .section-head h2{ font-size:clamp(2rem,4vw,3rem); }
+  .section-head .rule{ flex:1; height:1px; background:var(--panel-line); }
+
+  /* ---------- ABOUT ---------- */
+  #about .about-grid{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap:clamp(40px,6vw,90px);
+    align-items:start;
+  }
+  #about p{
+    font-size:clamp(1.05rem,1.6vw,1.25rem);
+    line-height:1.75;
+    color:var(--text-dim);
+    max-width:62ch;
+  }
+  #about p + p{ margin-top:22px; }
+  #about strong{ color:var(--text); font-weight:600; }
+
+  .traits{
+    display:flex; flex-wrap:wrap; gap:10px; margin-top:28px;
+  }
+  .trait{
+    border:1px solid var(--panel-line);
+    padding:8px 16px;
+    font-size:0.85rem;
+    color:var(--text-dim);
+    border-radius:2px;
+  }
+
+  .skills-panel{
+    border:1px solid var(--panel-line);
+    background:var(--panel);
+    padding:32px;
+  }
+  .skills-panel h3{
+    font-size:1.1rem; margin-bottom:22px; color:var(--text-dim); font-weight:600; font-family:'Space Grotesk',sans-serif;
+  }
+  .skill-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 0;
+    border-bottom:1px solid var(--panel-line);
+    font-size:0.98rem;
+  }
+  .skill-row:last-child{ border-bottom:none; }
+  .skill-bar{
+    width:110px; height:3px; background:#22263a; position:relative; overflow:hidden;
+  }
+  .skill-bar span{
+    position:absolute; left:0; top:0; height:100%;
+    background:linear-gradient(90deg, var(--cyan), var(--magenta));
+    transform:scaleX(0); transform-origin:left;
+    transition:transform 1.1s cubic-bezier(.16,1,.3,1);
+  }
+  .skill-bar.filled span{ transform:scaleX(1); }
+
+  /* ---------- PROJECT (terminal panel) ---------- */
+  #work{ background:var(--panel); border-top:1px solid var(--panel-line); border-bottom:1px solid var(--panel-line); }
+
+  .terminal{
+    border:1px solid var(--panel-line);
+    background:#0d0f18;
+    max-width:960px;
+    box-shadow:0 40px 100px -40px rgba(45,226,255,0.15);
+  }
+  .terminal-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:14px 18px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  .terminal-bar span{
+    width:10px; height:10px; border-radius:50%; background:#2a2d3d;
+  }
+  .terminal-bar .title{
+    margin-left:12px; font-size:0.82rem; color:var(--text-dim); font-family:'Space Grotesk',sans-serif;
+  }
+  .terminal-body{ padding:clamp(24px,4vw,48px); }
+  .terminal-body h3{
+    font-size:clamp(1.6rem,3vw,2.2rem);
+    color:var(--text);
+    margin-bottom:6px;
+  }
+  .terminal-body .status{
+    color:var(--cyan); font-size:0.85rem; margin-bottom:24px; display:inline-block;
+  }
+  .terminal-body .status::before{ content:'● '; }
+  .terminal-body p{
+    color:var(--text-dim); line-height:1.75; font-size:1.02rem; max-width:66ch; margin-bottom:26px;
+  }
+  .stack-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:30px; }
+  .chip{
+    font-size:0.82rem; padding:6px 14px; border:1px solid var(--panel-line); color:var(--text-dim);
+  }
+  .feature-list{ list-style:none; margin-bottom:8px; }
+  .feature-list li{
+    color:var(--text-dim); font-size:0.98rem; padding:6px 0 6px 22px; position:relative;
+  }
+  .feature-list li::before{
+    content:'▸'; position:absolute; left:0; color:var(--magenta);
+  }
+  .terminal-note{
+    margin-top:26px; font-size:0.85rem; color:var(--text-dim); border-top:1px solid var(--panel-line); padding-top:18px;
+  }
+
+  /* ---------- CONTACT ---------- */
+  #contact{ text-align:left; }
+  #contact h2.big{
+    font-size:clamp(2.4rem,6vw,5rem);
+    max-width:14ch;
+    line-height:1.05;
+    margin-bottom:36px;
+  }
+  .contact-link{
+    display:inline-flex; align-items:center; gap:14px;
+    font-size:clamp(1.1rem,2vw,1.4rem);
+    padding:16px 0;
+    border-bottom:1px solid var(--panel-line);
+    width:100%; max-width:520px;
+    color:var(--text);
+    transition:color 0.25s ease, padding-left 0.25s ease;
+  }
+  .contact-link:hover{ color:var(--cyan); padding-left:8px; }
+  .contact-row{ display:flex; flex-direction:column; }
+
+  footer{
+    padding:28px clamp(20px,5vw,64px);
+    color:var(--text-dim); font-size:0.82rem;
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    border-top:1px solid var(--panel-line);
+  }
+
+  /* ---------- reveal on scroll (single, restrained) ---------- */
+  .reveal{ opacity:0; transform:translateY(24px); transition:opacity 0.8s ease, transform 0.8s ease; }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+
+  @media (max-width:800px){
+    #about .about-grid{ grid-template-columns:1fr; }
+    nav ul{ gap:14px; font-size:0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="#hero">RG.</a>
+  <ul>
+    <li><a href="#about">Sobre mí</a></li>
+    <li><a href="#work">Proyecto</a></li>
+    <li><a href="#contact">Contacto</a></li>
+  </ul>
+</nav>
+
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-inner">
+    <span class="hero-eyebrow">Desarrollo de Aplicaciones Multiplataforma</span>
+    <h1 class="hero-name">Rubén Gili<br>Ramírez</h1>
+    <p class="hero-role">Estudiante de 2º de DAM enfocado en frontend y bases de datos. Construyo interfaces cuidadas sobre sistemas que funcionan de verdad.</p>
+  </div>
+  <div class="hero-scroll">
+    <span class="line"></span>
+    <span>Desplázate</span>
+  </div>
+</section>
+
+<section id="about">
+  <div class="section-head">
+    <span class="section-num">01</span>
+    <h2>Sobre mí</h2>
+    <div class="rule"></div>
+  </div>
+  <div class="about-grid">
+    <div class="reveal">
+      <p>Estoy cursando <strong>2º de Grado Superior en DAM</strong>, y de todo lo que he tocado hasta ahora, lo que más me engancha es el <strong>frontend</strong> y el diseño de <strong>bases de datos</strong>: la parte que se ve y la que sostiene todo por debajo.</p>
+      <p>Me defino como una persona responsable y comprometida. Trabajo bien en equipo y me adapto con facilidad a nuevas tecnologías, entornos y formas de trabajar, algo que he podido comprobar en cada proyecto que empiezo desde cero.</p>
+      <div class="traits">
+        <span class="trait">Responsable</span>
+        <span class="trait">Comprometido</span>
+        <span class="trait">Trabajo en equipo</span>
+        <span class="trait">Adaptable</span>
+      </div>
+    </div>
+    <div class="skills-panel reveal">
+      <h3>Stack</h3>
+      <div class="skill-row"><span>Java</span><div class="skill-bar"><span></span></div></div>
+      <div class="skill-row"><span>JavaScript</span><div class="skill-bar"><span></span></div></div>
+      <div class="skill-row"><span>HTML / CSS</span><div class="skill-bar"><span></span></div></div>
+      <div class="skill-row"><span>Bootstrap</span><div class="skill-bar"><span></span></div></div>
+      <div class="skill-row"><span>Spring Boot</span><div class="skill-bar"><span></span></div></div>
+      <div class="skill-row"><span>Python</span><div class="skill-bar"><span></span></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="work">
+  <div class="section-head">
+    <span class="section-num">02</span>
+    <h2>Proyecto</h2>
+    <div class="rule"></div>
+  </div>
+
+  <div class="terminal reveal">
+    <div class="terminal-bar">
+      <span></span><span></span><span></span>
+      <span class="title">~/proyectos/finanzas-personales</span>
+    </div>
+    <div class="terminal-body">
+      <span class="status">completado</span>
+      <h3>Plataforma de gestión de finanzas personales</h3>
+      <p>Aplicación web construida en <strong style="color:var(--text)">Node.js</strong> con base de datos en <strong style="color:var(--text)">Supabase</strong>, pensada para centralizar tus cuentas bancarias, ahorros y gastos en un solo sitio. Incluye un sistema de autenticación con middleware propio que protege las rutas privadas.</p>
+      <ul class="feature-list">
+        <li>Registro e inicio de sesión con middleware de autenticación</li>
+        <li>Gestión de cuentas bancarias, ahorros y gastos</li>
+        <li>Base de datos relacional en Supabase</li>
+      </ul>
+      <div class="stack-chips">
+        <span class="chip">Node.js</span>
+        <span class="chip">Supabase</span>
+        <span class="chip">JavaScript</span>
+        <span class="chip">Middleware / Auth</span>
+      </div>
+      <div class="terminal-note">Repositorio aún no publicado. En cuanto tenga el enlace de GitHub o una demo en vivo, se puede enlazar directamente aquí.</div>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="section-head">
+    <span class="section-num">03</span>
+    <h2>Contacto</h2>
+    <div class="rule"></div>
+  </div>
+  <h2 class="big reveal">¿Hablamos de tu próximo proyecto?</h2>
+  <div class="contact-row reveal">
+    <a class="contact-link" href="mailto:rubenglramirez@gmail.com">rubenglramirez@gmail.com →</a>
+    <a class="contact-link" href="https://github.com/rubengiliramirez" target="_blank" rel="noopener">github.com/rubengiliramirez →</a>
+  </div>
+</section>
+
+<footer>
+  <span>Rubén Gili Ramírez</span>
+  <span>Diseñado y construido a mano</span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
+<script>
+  // ---------- Reveal on scroll ----------
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold:0.15 });
+  revealEls.forEach(el=>io.observe(el));
+
+  // ---------- Skill bars fill when visible ----------
+  const skillBars = document.querySelectorAll('.skill-bar');
+  const io2 = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('filled'); io2.unobserve(e.target); }
+    });
+  }, { threshold:0.4 });
+  skillBars.forEach(el=>io2.observe(el));
+
+  // ---------- Three.js hero background ----------
+  (function(){
+    const canvas = document.getElementById('hero-canvas');
+    const hero = document.getElementById('hero');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    camera.position.set(0, 1.4, 6);
+
+    function setSize(){
+      const w = hero.clientWidth, h = hero.clientHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    setSize();
+    window.addEventListener('resize', setSize);
+
+    // Particle field
+    const count = 900;
+    const positions = new Float32Array(count * 3);
+    for(let i=0;i<count;i++){
+      positions[i*3+0] = (Math.random()-0.5) * 16;
+      positions[i*3+1] = (Math.random()-0.5) * 9;
+      positions[i*3+2] = (Math.random()-0.5) * 10 - 2;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const cyan = new THREE.Color(0x2de2ff);
+    const magenta = new THREE.Color(0xff2bd6);
+    const colors = new Float32Array(count * 3);
+    for(let i=0;i<count;i++){
+      const c = Math.random() > 0.5 ? cyan : magenta;
+      colors[i*3+0]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mat = new THREE.PointsMaterial({
+      size:0.035, vertexColors:true, transparent:true, opacity:0.85,
+      depthWrite:false, blending:THREE.AdditiveBlending
+    });
+    const points = new THREE.Points(geo, mat);
+    scene.add(points);
+
+    // Wireframe ground grid
+    const grid = new THREE.GridHelper(30, 40, 0x2de2ff, 0x1a1d2b);
+    grid.position.y = -2.4;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.35;
+    scene.add(grid);
+
+    let mouseX = 0, mouseY = 0;
+    window.addEventListener('mousemove', (e)=>{
+      mouseX = (e.clientX / window.innerWidth - 0.5);
+      mouseY = (e.clientY / window.innerHeight - 0.5);
+    });
+
+    let raf;
+    function animate(){
+      raf = requestAnimationFrame(animate);
+      const t = performance.now() * 0.0001;
+
+      points.rotation.y = t * 0.6;
+      points.rotation.x = t * 0.15;
+
+      camera.position.x += (mouseX * 1.4 - camera.position.x) * 0.03;
+      camera.position.y += (1.4 - mouseY * 0.8 - camera.position.y) * 0.03;
+      camera.lookAt(0,0,0);
+
+      grid.position.z = (t * 8) % 4;
+
+      renderer.render(scene, camera);
+    }
+
+    if(reducedMotion){
+      renderer.render(scene, camera);
+    } else {
+      animate();
+    }
+  })();
+</script>
+
+</body>
+</html>
