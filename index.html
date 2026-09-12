@@ -92,6 +92,17 @@
     background:var(--cyan); transition:width 0.35s ease, left 0.35s ease;
   }
   nav ul a:hover::after{ width:100%; left:0; }
+  nav ul a.active{ color:var(--cyan); }
+  nav ul a.active::after{ width:100%; left:0; }
+
+  /* ---------- SKIP LINK (accesibilidad) ---------- */
+  .skip-link{
+    position:fixed; top:-60px; left:16px; z-index:1000;
+    background:var(--cyan); color:#06060a; font-weight:600;
+    padding:12px 20px; border-radius:3px; font-size:0.9rem;
+    transition:top 0.25s ease;
+  }
+  .skip-link:focus{ top:16px; }
 
   /* ---------- HERO ---------- */
   #hero{ position:relative; min-height:100vh; display:flex; align-items:center; overflow:hidden; }
@@ -253,7 +264,9 @@
 </head>
 <body class="locked">
 
-<div id="preloader">
+<a href="#about" class="skip-link">Saltar al contenido</a>
+
+<div id="preloader" aria-hidden="true">
   <div class="preloader-logo-wrap">
     <div class="preloader-glow"></div>
     <div class="preloader-ring"></div>
@@ -261,17 +274,17 @@
   </div>
 </div>
 
-<nav>
+<nav aria-label="Navegación principal">
   <ul>
-    <li><a href="#hero">Inicio</a></li>
-    <li><a href="#about">Sobre mí</a></li>
-    <li><a href="#work">Proyecto</a></li>
-    <li><a href="#contact">Contacto</a></li>
+    <li><a href="#hero" data-nav="hero">Inicio</a></li>
+    <li><a href="#about" data-nav="about">Sobre mí</a></li>
+    <li><a href="#work" data-nav="work">Proyecto</a></li>
+    <li><a href="#contact" data-nav="contact">Contacto</a></li>
   </ul>
 </nav>
 
 <section id="hero">
-  <canvas id="hero-canvas"></canvas>
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-inner">
     <span class="hero-eyebrow">Desarrollo de Aplicaciones Multiplataforma</span>
     <h1 class="hero-name">Rubén Gili<br>Ramírez</h1>
@@ -402,12 +415,20 @@
 
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
 <script>
-  // ---------- Preloader ----------
+  // ---------- Preloader (solo se muestra la primera vez por sesión) ----------
   (function(){
     const pre = document.getElementById('preloader');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const alreadyVisited = sessionStorage.getItem('rgr_visited');
+
+    if(alreadyVisited){
+      pre.style.display = 'none';
+      document.body.classList.remove('locked');
+      return;
+    }
+    sessionStorage.setItem('rgr_visited', 'true');
+
     const minDuration = reducedMotion ? 0 : 1900;
     const start = performance.now();
 
@@ -447,83 +468,97 @@
   }, { threshold:0.4 });
   skillBars.forEach(el=>io2.observe(el));
 
-  // ---------- Three.js hero background ----------
+  // ---------- Active nav link on scroll ----------
+  const navLinks = document.querySelectorAll('nav ul a[data-nav]');
+  const trackedSections = document.querySelectorAll('section[id]');
+  const io3 = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        navLinks.forEach(link=>{
+          link.classList.toggle('active', link.dataset.nav === e.target.id);
+        });
+      }
+    });
+  }, { threshold:0.5 });
+  trackedSections.forEach(sec=>io3.observe(sec));
+
+  // ---------- Hero background: partículas en Canvas 2D nativo ----------
+  // (antes usaba Three.js/WebGL solo para esto; una librería 3D completa
+  // era excesivo para un fondo de partículas, así que se sustituye por
+  // Canvas 2D puro, sin dependencias externas)
   (function(){
     const canvas = document.getElementById('hero-canvas');
     const hero = document.getElementById('hero');
+    const ctx = canvas.getContext('2d');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    let w, h, particles;
+    const cyan = '45,226,255';
+    const magenta = '255,43,214';
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
-    camera.position.set(0, 1.4, 6);
-
-    function setSize(){
-      const w = hero.clientWidth, h = hero.clientHeight;
-      renderer.setSize(w, h);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
+    function resize(){
+      w = hero.clientWidth;
+      h = hero.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    setSize();
-    window.addEventListener('resize', setSize);
 
-    const count = 900;
-    const positions = new Float32Array(count * 3);
-    for(let i=0;i<count;i++){
-      positions[i*3+0] = (Math.random()-0.5) * 16;
-      positions[i*3+1] = (Math.random()-0.5) * 9;
-      positions[i*3+2] = (Math.random()-0.5) * 10 - 2;
+    function createParticles(){
+      const count = Math.round((w * h) / 9000);
+      particles = Array.from({ length: count }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 1.6 + 0.6,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
+        color: Math.random() > 0.5 ? cyan : magenta,
+        alpha: Math.random() * 0.5 + 0.35
+      }));
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-    const cyan = new THREE.Color(0x2de2ff);
-    const magenta = new THREE.Color(0xff2bd6);
-    const colors = new Float32Array(count * 3);
-    for(let i=0;i<count;i++){
-      const c = Math.random() > 0.5 ? cyan : magenta;
-      colors[i*3+0]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-    const mat = new THREE.PointsMaterial({
-      size:0.035, vertexColors:true, transparent:true, opacity:0.85,
-      depthWrite:false, blending:THREE.AdditiveBlending
-    });
-    const points = new THREE.Points(geo, mat);
-    scene.add(points);
-
-    const grid = new THREE.GridHelper(30, 40, 0x2de2ff, 0x1a1d2b);
-    grid.position.y = -2.4;
-    grid.material.transparent = true;
-    grid.material.opacity = 0.35;
-    scene.add(grid);
+    resize();
+    createParticles();
+    window.addEventListener('resize', () => { resize(); createParticles(); });
 
     let mouseX = 0, mouseY = 0;
-    window.addEventListener('mousemove', (e)=>{
+    window.addEventListener('mousemove', (e) => {
       mouseX = (e.clientX / window.innerWidth - 0.5);
       mouseY = (e.clientY / window.innerHeight - 0.5);
     });
 
-    function animate(){
-      requestAnimationFrame(animate);
-      const t = performance.now() * 0.0001;
-      points.rotation.y = t * 0.6;
-      points.rotation.x = t * 0.15;
-      camera.position.x += (mouseX * 1.4 - camera.position.x) * 0.03;
-      camera.position.y += (1.4 - mouseY * 0.8 - camera.position.y) * 0.03;
-      camera.lookAt(0,0,0);
-      grid.position.z = (t * 8) % 4;
-      renderer.render(scene, camera);
+    function drawFrame(){
+      ctx.clearRect(0, 0, w, h);
+      const offsetX = mouseX * 18;
+      const offsetY = mouseY * 12;
+
+      ctx.globalCompositeOperation = 'lighter';
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if(p.x < 0) p.x = w; if(p.x > w) p.x = 0;
+        if(p.y < 0) p.y = h; if(p.y > h) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x + offsetX, p.y + offsetY, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
+        ctx.fill();
+      });
+      ctx.globalCompositeOperation = 'source-over';
     }
 
-    if(reducedMotion){ renderer.render(scene, camera); }
-    else { animate(); }
+    if(reducedMotion){
+      drawFrame();
+    } else {
+      (function loop(){ drawFrame(); requestAnimationFrame(loop); })();
+    }
   })();
 </script>
 
 </body>
 </html>
+
 
