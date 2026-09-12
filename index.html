@@ -160,7 +160,6 @@
   section{ position:relative; padding:clamp(120px,16vw,200px) clamp(20px,5vw,64px); }
 
   .section-head{ display:flex; align-items:baseline; gap:18px; margin-bottom:72px; }
-  #work .section-head{ max-width:1180px; margin-left:auto; margin-right:auto; margin-bottom:72px; }
   .section-num{ color:var(--magenta); font-size:0.95rem; }
   .section-head h2{ font-size:clamp(2rem,4vw,3rem); }
   .section-head .rule{ flex:1; height:1px; background:var(--panel-line); }
@@ -187,8 +186,8 @@
   .work-layout{ display:grid; grid-template-columns: 1.5fr 0.8fr; gap:32px; align-items:stretch; max-width:1180px; margin:0 auto; }
   .terminal{ border:1px solid var(--panel-line); background:#0d0f18; box-shadow:0 40px 100px -40px rgba(45,226,255,0.15); }
   .terminal-bar{ display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--panel-line); }
-  .terminal-bar span{ width:10px; height:10px; border-radius:50%; background:#2a2d3d; }
-  .terminal-bar .title{ margin-left:12px; font-size:0.82rem; color:var(--text-dim); font-family:'Space Grotesk',sans-serif; }
+  .terminal-bar span{ width:10px; height:10px; border-radius:50%; background:#2a2d3d; flex-shrink:0; }
+  .terminal-bar .title{ margin-left:12px; font-size:0.82rem; color:var(--text-dim); font-family:'Space Grotesk',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .terminal-body{ padding:clamp(28px,4vw,52px); }
   .terminal-body h3{ font-size:clamp(1.6rem,3vw,2.2rem); color:var(--text); margin-bottom:6px; }
   .terminal-body .status{ color:var(--cyan); font-size:0.85rem; margin-bottom:26px; display:inline-block; }
@@ -331,7 +330,7 @@
     <div class="terminal reveal">
       <div class="terminal-bar">
         <span></span><span></span><span></span>
-        <span class="title">~/proyectos/tracki — Next.js 16</span>
+        <span class="title">~/proyectos/tracki</span>
       </div>
       <div class="terminal-body">
         <span class="status">completado</span>
@@ -525,4 +524,3 @@
 
 </body>
 </html>
-
