@@ -160,6 +160,7 @@
   section{ position:relative; padding:clamp(120px,16vw,200px) clamp(20px,5vw,64px); }
 
   .section-head{ display:flex; align-items:baseline; gap:18px; margin-bottom:72px; }
+  #work .section-head{ max-width:1180px; margin-left:auto; margin-right:auto; margin-bottom:72px; }
   .section-num{ color:var(--magenta); font-size:0.95rem; }
   .section-head h2{ font-size:clamp(2rem,4vw,3rem); }
   .section-head .rule{ flex:1; height:1px; background:var(--panel-line); }
@@ -183,7 +184,7 @@
 
   /* ---------- PROJECT ---------- */
   #work{ background:var(--panel); border-top:1px solid var(--panel-line); border-bottom:1px solid var(--panel-line); }
-  .work-layout{ display:grid; grid-template-columns: 1.5fr 0.8fr; gap:32px; align-items:stretch; max-width:1180px; }
+  .work-layout{ display:grid; grid-template-columns: 1.5fr 0.8fr; gap:32px; align-items:stretch; max-width:1180px; margin:0 auto; }
   .terminal{ border:1px solid var(--panel-line); background:#0d0f18; box-shadow:0 40px 100px -40px rgba(45,226,255,0.15); }
   .terminal-bar{ display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--panel-line); }
   .terminal-bar span{ width:10px; height:10px; border-radius:50%; background:#2a2d3d; }
@@ -330,22 +331,26 @@
     <div class="terminal reveal">
       <div class="terminal-bar">
         <span></span><span></span><span></span>
-        <span class="title">~/proyectos/tracki</span>
+        <span class="title">~/proyectos/tracki — Next.js 16</span>
       </div>
       <div class="terminal-body">
         <span class="status">completado</span>
         <h3>Tracki — Finanzas personales</h3>
-        <p>Aplicación web construida en <strong style="color:var(--text)">Node.js</strong> con base de datos en <strong style="color:var(--text)">Supabase</strong>, pensada para centralizar tus cuentas bancarias, ahorros y gastos en un solo sitio. Incluye un sistema de autenticación con middleware propio que protege las rutas privadas.</p>
+        <p>Aplicación de finanzas personales construida con <strong style="color:var(--text)">Next.js 16 (App Router)</strong> y <strong style="color:var(--text)">React 19</strong>, con <strong style="color:var(--text)">Supabase</strong> como backend de autenticación y base de datos Postgres. Centraliza cuentas bancarias, transacciones categorizadas y objetivos de ahorro, con un panel de estadísticas construido con Recharts.</p>
         <ul class="feature-list">
-          <li>Registro e inicio de sesión con middleware de autenticación</li>
-          <li>Gestión de cuentas bancarias, ahorros y gastos</li>
-          <li>Base de datos relacional en Supabase</li>
+          <li>Rutas del dashboard protegidas con Middleware de Next.js (Edge Runtime) + Row Level Security de Supabase a nivel de base de datos</li>
+          <li>Gestión de cuentas, transacciones y objetivos de ahorro con seguimiento de progreso</li>
+          <li>Estadísticas en tiempo real: evolución del balance, gasto por categoría y por mes</li>
+          <li>Filtrado global por cuenta mediante Context API, con animaciones de Framer Motion</li>
         </ul>
         <div class="stack-chips">
-          <span class="chip">Node.js</span>
+          <span class="chip">Next.js 16</span>
+          <span class="chip">React 19</span>
+          <span class="chip">TypeScript</span>
           <span class="chip">Supabase</span>
-          <span class="chip">JavaScript</span>
-          <span class="chip">Middleware / Auth</span>
+          <span class="chip">Tailwind CSS</span>
+          <span class="chip">Recharts</span>
+          <span class="chip">Framer Motion</span>
         </div>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/rubengiliramirez/tracki" target="_blank" rel="noopener">
@@ -363,16 +368,16 @@
 
     <div class="work-side">
       <div class="stat-card reveal">
+        <div class="num">4</div>
+        <div class="label">Módulos: cuentas, transacciones, objetivos y estadísticas</div>
+      </div>
+      <div class="stat-card reveal">
+        <div class="num">RLS</div>
+        <div class="label">Seguridad reforzada a nivel de base de datos con Row Level Security de Supabase</div>
+      </div>
+      <div class="stat-card reveal">
         <div class="num">100%</div>
         <div class="label">Funcional de extremo a extremo: registro, login y gestión de datos reales</div>
-      </div>
-      <div class="stat-card reveal">
-        <div class="num">3</div>
-        <div class="label">Módulos: cuentas bancarias, ahorros y gastos</div>
-      </div>
-      <div class="stat-card reveal">
-        <div class="num">1º</div>
-        <div class="label">Proyecto propio construido de principio a fin, de la idea al despliegue</div>
       </div>
     </div>
   </div>
@@ -520,3 +525,4 @@
 
 </body>
 </html>
+
