@@ -26,6 +26,16 @@
     necesario. jQuery abstraía incompatibilidades que hoy no se dan. El código
     se aísla en IIFE para no contaminar el objeto global.
 
+  · Bilingüe ES/EN con diccionario propio — no i18next ni build multi-idioma.
+    Dos idiomas y ~35 cadenas no justifican una librería de i18n (i18next son
+    ~40KB con su detector) ni duplicar el sitio en /es y /en, que obligaría a
+    mantener dos HTML en paralelo y a sincronizar cada cambio. El diccionario
+    vive en un objeto literal y el marcado se anota con data-i18n: una sola
+    fuente de verdad, cero dependencias, y el idioma se conmuta sin recargar.
+    Contrapartida asumida: sin recarga no hay URL distinta por idioma, así que
+    Google indexa sólo la versión servida (ES). Para un portfolio es
+    aceptable; una web de producto necesitaría rutas reales y hreflang.
+
   · Canvas 2D nativo para las partículas — no Three.js (ver comentario en el
     módulo de partículas, al final del documento).
 
@@ -35,10 +45,11 @@
     IntersectionObserver delega el cálculo al navegador, asíncrono y fuera del
     hilo principal, e invoca el callback sólo al cruzar el umbral.
 
-  · sessionStorage para el preloader — no localStorage.
-    La animación de marca debe verse UNA VEZ POR PESTAÑA. Con localStorage,
-    quien vuelve una semana después no la vería nunca; sin persistencia, la
-    vería en cada navegación interna. sessionStorage acierta el punto medio.
+  · sessionStorage para el preloader, localStorage para el idioma.
+    Son decisiones opuestas a propósito: la animación de marca debe verse una
+    vez POR PESTAÑA (sessionStorage), mientras que la elección de idioma es una
+    preferencia del visitante que debe sobrevivir al cierre del navegador
+    (localStorage). Ambos accesos van dentro de try/catch.
 
   · Google Fonts con preconnect — única dependencia externa.
     Se cargan pesos específicos (no familias completas) con display=swap para
@@ -70,6 +81,7 @@
 <meta property="og:description" content="Portfolio de Rubén Gili Ramírez, estudiante de DAM especializado en frontend y bases de datos.">
 <meta property="og:image" content="https://TU-DOMINIO.com/og-image.png">
 <meta property="og:locale" content="es_ES">
+<meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Rubén Gili Ramírez — Desarrollador">
 <meta name="twitter:description" content="Portfolio de Rubén Gili Ramírez, estudiante de DAM especializado en frontend y bases de datos.">
@@ -141,8 +153,9 @@
           padding-left, border-color) son microinteracciones puntuales de hover.
        3. Curva de marca: cubic-bezier(.16,1,.3,1) — ease-out pronunciada.
           Arranca rápido y frena largo. Se usa en preloader, botones, barras de
-          nivel y revelado al scroll para unificar el movimiento del sitio.
-          ease / ease-in-out queda para bucles ambientales y microinteracciones.
+          nivel, conmutador de idioma y revelado al scroll para unificar el
+          movimiento del sitio. ease / ease-in-out queda para bucles
+          ambientales y microinteracciones.
        4. Las animaciones de un solo uso se desconectan (unobserve) tras
           dispararse: repetirlas al subir y bajar resultaría mareante.
        5. El movimiento nunca es la única fuente de información: todo el
@@ -163,17 +176,33 @@
      Los cuatro bucles del hero (6 / 5 / 18 / 6.5 s) no son múltiplos entre sí
      a propósito: al no sincronizarse, el conjunto nunca parece mecánico.
 
+     Conmutador de idioma (ES/EN) — dos animaciones coordinadas:
+       .lang-thumb   0.45s bezier  Deslizamiento del indicador entre ES y EN.
+                                   El estado lo dirige html[lang], no una clase
+                                   de JS: una única fuente de verdad.
+       Crossfade     0.18s ease    main + nav ul + footer bajan a opacity .15
+                                   mientras se sustituyen las cadenas, y
+                                   vuelven. Oculta el salto de texto y comunica
+                                   que ha cambiado toda la página, no un trozo.
+                                   Se aplica a los tres bloques enteros y no a
+                                   cada [data-i18n] para no pisar la transición
+                                   de .reveal en los elementos que llevan ambas.
+
      Animaciones orquestadas desde JS (ver el bloque JS al final del body):
        Preloader  — sessionStorage + duración mínima 1900ms + failsafe 4000ms
+       Idioma     — localStorage + crossfade de 180ms antes de sustituir
        Revelado   — IntersectionObserver th:0.15, stagger (i%4)*80ms, unobserve
        Barras     — IntersectionObserver th:0.40, scaleX(--level), unobserve
        Nav activo — IntersectionObserver th:0.50, permanente (no se desconecta)
        Partículas — Canvas 2D, requestAnimationFrame, densidad = w*h/9000
 
-     Accesibilidad: prefers-reduced-motion se respeta en TRES capas —
+     Accesibilidad: prefers-reduced-motion se respeta en CUATRO capas —
        (1) el barrido global de aquí abajo, que cubre todo el CSS presente y
-           futuro; (2) matchMedia en el preloader; (3) matchMedia en el canvas.
-       La tercera es imprescindible: el CSS no puede detener un bucle de JS.
+           futuro; (2) matchMedia en el preloader; (3) matchMedia en el canvas;
+       (4) matchMedia en el conmutador de idioma, que salta el crossfade y
+           sustituye las cadenas de inmediato.
+       Las tres últimas son imprescindibles: el CSS no puede detener un bucle
+       de JS ni acortar un setTimeout.
      ========================================================================== */
 
   @media (prefers-reduced-motion: reduce){
@@ -218,19 +247,20 @@
   @keyframes ringOut{ to{ opacity:0; transform:scale(1.3); } }
 
   /* ---------- NAV ---------- */
-  /* mix-blend-mode:difference invierte el color de los enlaces respecto a lo
-     que tengan detrás: legibles sobre el fondo oscuro Y sobre el logo
-     luminoso del hero, sin necesidad de un fondo sólido.
-     VERIFICAR EN SAFARI: la combinación con position:fixed ha producido
-     artefactos de repintado en algunas versiones. Alternativa si aparecen:
-     fondo semitransparente + backdrop-filter:blur(12px). */
+  /* mix-blend-mode va en `nav ul` y NO en `nav`: el modo de fusión se aplica al
+     elemento entero como grupo, así que un hijo no puede excluirse. Con el
+     blend en `nav`, el conmutador de idioma se renderizaría con sus colores
+     invertidos. Moviéndolo a la lista, los enlaces conservan exactamente el
+     mismo comportamiento (nav no tiene fondo propio) y el botón queda fuera.
+     VERIFICAR EN SAFARI: la combinación de mix-blend-mode con position:fixed
+     ha producido artefactos de repintado en algunas versiones. Alternativa si
+     aparecen: fondo semitransparente + backdrop-filter:blur(12px). */
   nav{
     position:fixed; top:0; left:0; right:0; z-index:100;
-    display:flex; justify-content:flex-start; align-items:center;
+    display:flex; justify-content:space-between; align-items:center; gap:20px;
     padding:26px clamp(20px,5vw,64px);
-    mix-blend-mode:difference;
   }
-  nav ul{ list-style:none; display:flex; gap:clamp(18px,3vw,44px); font-size:0.92rem; }
+  nav ul{ list-style:none; display:flex; gap:clamp(18px,3vw,44px); font-size:0.92rem; mix-blend-mode:difference; }
   nav ul a{ position:relative; padding-bottom:4px; transition:color 0.3s ease; }
   /* width + left simultáneos: la línea crece desde el centro hacia los lados,
      en lugar de barrer desde la izquierda. */
@@ -241,6 +271,47 @@
   nav ul a:hover::after{ width:100%; left:0; }
   nav ul a.active{ color:var(--cyan); }
   nav ul a.active::after{ width:100%; left:0; }
+
+  /* ---------- CONMUTADOR DE IDIOMA ---------- */
+  .lang-toggle{
+    position:relative; display:inline-flex; align-items:center; flex-shrink:0;
+    padding:3px; border:1px solid var(--panel-line); border-radius:999px;
+    background:var(--panel); cursor:pointer;
+    font-family:'Rajdhani', sans-serif; font-weight:700; letter-spacing:0.06em;
+    transition:border-color 0.3s ease, transform 0.3s cubic-bezier(.16,1,.3,1), box-shadow 0.3s ease;
+  }
+  .lang-toggle:hover{ border-color:var(--cyan); transform:translateY(-2px); box-shadow:0 10px 24px -12px rgba(45,226,255,0.5); }
+  .lang-toggle:active{ transform:translateY(0) scale(0.96); }
+  .lang-opt{
+    position:relative; z-index:1;
+    min-width:42px; padding:5px 0; text-align:center;
+    font-size:0.8rem; line-height:1.2;
+    color:var(--text-dim);
+    transition:color 0.35s ease;
+  }
+  /* El estado activo lo dirige el atributo lang del documento: una sola fuente
+     de verdad para CSS y JS, sin clases que puedan desincronizarse. */
+  html[lang="es"] .lang-opt[data-lang-opt="es"],
+  html[lang="en"] .lang-opt[data-lang-opt="en"]{ color:var(--on-accent); }
+  .lang-thumb{
+    position:absolute; top:3px; left:3px; z-index:0;
+    width:calc(50% - 3px); height:calc(100% - 6px);
+    border-radius:999px;
+    background:linear-gradient(100deg, var(--cyan), var(--magenta));
+    box-shadow:0 0 16px -3px rgba(45,226,255,0.6);
+    transform:translateX(0);
+    transition:transform 0.45s cubic-bezier(.16,1,.3,1);
+  }
+  html[lang="en"] .lang-thumb{ transform:translateX(100%); }
+  /* Sólo durante la inicialización: si el visitante tenía EN guardado, el
+     indicador debe aparecer ya a la derecha, no deslizarse solo al cargar. */
+  html.i18n-init .lang-thumb{ transition:none; }
+
+  /* Crossfade del contenido al cambiar de idioma (ver bloque de animación). */
+  main, nav ul, footer{ transition:opacity 0.18s ease; }
+  html.lang-swapping main,
+  html.lang-swapping nav ul,
+  html.lang-swapping footer{ opacity:0.15; }
 
   /* ---------- SKIP LINK (accesibilidad) ---------- */
   .skip-link{
@@ -345,9 +416,9 @@
   .skill-row:last-child{ border-bottom:none; }
   .skill-bar{ width:110px; height:3px; background:var(--panel-line); position:relative; overflow:hidden; }
   /* Se anima scaleX y no width: escalar es una operación del compositor,
-     cambiar el ancho fuerza recálculo de layout en cada fotograma. */
-  /* width:100% es imprescindible: un elemento absoluto con left:0, right:auto
-     y sin contenido tiene ancho 0, y escalar 0 sigue siendo 0. Sin esta línea
+     cambiar el ancho fuerza recálculo de layout en cada fotograma.
+     width:100% es imprescindible: un elemento absoluto con left:0, right:auto
+     y sin contenido tiene ancho 0, y escalar 0 sigue siendo 0. Sin esa línea
      el relleno no se ve nunca, por mucho que scaleX se aplique. */
   .skill-bar span{
     position:absolute; left:0; top:0; width:100%; height:100%;
@@ -430,26 +501,35 @@
   }
   @media (max-width:800px){
     #about .about-grid{ grid-template-columns:1fr; }
+    nav{ gap:12px; }
     nav ul{ gap:14px; font-size:0.8rem; }
     .work-side{ flex-direction:column; }
+  }
+  @media (max-width:420px){
+    nav{ padding-top:20px; padding-bottom:20px; }
+    nav ul{ gap:11px; font-size:0.74rem; }
+    .lang-opt{ min-width:34px; font-size:0.72rem; }
   }
 </style>
 
 <!-- Sin JavaScript, `body.locked` y el preloader a pantalla completa dejarían
      el sitio inutilizable, y todo lo marcado con .reveal quedaría en opacity:0.
-     Este bloque garantiza que el portfolio se lee entero sin JS. -->
+     Este bloque garantiza que el portfolio se lee entero sin JS — en español,
+     que es el idioma con el que se sirve el HTML; el conmutador se oculta
+     porque sin JS no puede funcionar y un control muerto confunde. -->
 <noscript>
   <style>
     #preloader{ display:none !important; }
     body.locked{ overflow:auto !important; height:auto !important; }
     .reveal{ opacity:1 !important; transform:none !important; }
     .skill-bar span{ transform:scaleX(var(--level, 1)) !important; }
+    .lang-toggle{ display:none !important; }
   </style>
 </noscript>
 </head>
 <body class="locked">
 
-<a href="#main" class="skip-link">Saltar al contenido</a>
+<a href="#main" class="skip-link" data-i18n="skip">Saltar al contenido</a>
 
 <div id="preloader" aria-hidden="true">
   <div class="preloader-logo-wrap">
@@ -459,13 +539,24 @@
   </div>
 </div>
 
-<nav aria-label="Navegación principal">
+<nav data-i18n-aria="nav.aria" aria-label="Navegación principal">
   <ul>
-    <li><a href="#hero" data-nav="hero">Inicio</a></li>
-    <li><a href="#about" data-nav="about">Sobre mí</a></li>
-    <li><a href="#work" data-nav="work">Proyecto</a></li>
-    <li><a href="#contact" data-nav="contact">Contacto</a></li>
+    <li><a href="#hero" data-nav="hero" data-i18n="nav.home">Inicio</a></li>
+    <li><a href="#about" data-nav="about" data-i18n="nav.about">Sobre mí</a></li>
+    <li><a href="#work" data-nav="work" data-i18n="nav.work">Proyecto</a></li>
+    <li><a href="#contact" data-nav="contact" data-i18n="nav.contact">Contacto</a></li>
   </ul>
+
+  <!-- Conmutador de idioma. Es un <button>, no dos enlaces: no navega a ningún
+       sitio, cambia el estado de la página. El aria-label anuncia la ACCIÓN
+       (a qué idioma se va a cambiar) y se traduce con el resto; los códigos
+       llevan su propio lang para que el lector de pantalla los pronuncie en
+       el idioma correcto. -->
+  <button type="button" class="lang-toggle" id="langToggle" data-i18n-aria="lang.action" aria-label="Cambiar el idioma a inglés">
+    <span class="lang-thumb" aria-hidden="true"></span>
+    <span class="lang-opt" data-lang-opt="es" lang="es">ES</span>
+    <span class="lang-opt" data-lang-opt="en" lang="en">EN</span>
+  </button>
 </nav>
 
 <main id="main" tabindex="-1">
@@ -473,13 +564,13 @@
 <section id="hero">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-inner">
-    <span class="hero-eyebrow">Desarrollo de Aplicaciones Multiplataforma</span>
+    <span class="hero-eyebrow" data-i18n="hero.eyebrow">Desarrollo de Aplicaciones Multiplataforma</span>
     <h1 class="hero-name">Rubén Gili<br>Ramírez</h1>
-    <p class="hero-role">Estudiante de 2º de DAM enfocado en frontend y bases de datos. Construyo interfaces cuidadas sobre sistemas que funcionan de verdad.</p>
+    <p class="hero-role" data-i18n="hero.role">Estudiante de 2º de DAM enfocado en frontend y bases de datos. Construyo interfaces cuidadas sobre sistemas que funcionan de verdad.</p>
   </div>
   <div class="hero-scroll">
     <span class="line"></span>
-    <span>Desplázate</span>
+    <span data-i18n="hero.scroll">Desplázate</span>
   </div>
   <div class="hero-logo-stage">
     <div class="hero-logo-glow"></div>
@@ -495,18 +586,18 @@
 <section id="about">
   <div class="section-head">
     <span class="section-num">01</span>
-    <h2>Sobre mí</h2>
+    <h2 data-i18n="about.title">Sobre mí</h2>
     <div class="rule"></div>
   </div>
   <div class="about-grid">
     <div class="reveal">
-      <p>Estoy cursando <strong>2º de Grado Superior en DAM</strong>, y de todo lo que he tocado hasta ahora, lo que más me engancha es el <strong>frontend</strong> y el diseño de <strong>bases de datos</strong>: la parte que se ve y la que sostiene todo por debajo.</p>
-      <p>Me defino como una persona responsable y comprometida. Trabajo bien en equipo y me adapto con facilidad a nuevas tecnologías, entornos y formas de trabajar, algo que he podido comprobar en cada proyecto que empiezo desde cero.</p>
+      <p data-i18n-html="about.p1">Estoy cursando <strong>2º de Grado Superior en DAM</strong>, y de todo lo que he tocado hasta ahora, lo que más me engancha es el <strong>frontend</strong> y el diseño de <strong>bases de datos</strong>: la parte que se ve y la que sostiene todo por debajo.</p>
+      <p data-i18n="about.p2">Me defino como una persona responsable y comprometida. Trabajo bien en equipo y me adapto con facilidad a nuevas tecnologías, entornos y formas de trabajar, algo que he podido comprobar en cada proyecto que empiezo desde cero.</p>
       <div class="traits">
-        <span class="trait">Responsable</span>
-        <span class="trait">Comprometido</span>
-        <span class="trait">Trabajo en equipo</span>
-        <span class="trait">Adaptable</span>
+        <span class="trait" data-i18n="trait.responsible">Responsable</span>
+        <span class="trait" data-i18n="trait.committed">Comprometido</span>
+        <span class="trait" data-i18n="trait.team">Trabajo en equipo</span>
+        <span class="trait" data-i18n="trait.adaptable">Adaptable</span>
       </div>
     </div>
     <!-- AJUSTA --level (0 a 1) y aria-valuenow (0 a 100) a tu nivel real.
@@ -526,7 +617,7 @@
 <section id="work">
   <div class="section-head">
     <span class="section-num">02</span>
-    <h2>Proyecto</h2>
+    <h2 data-i18n="work.title">Proyecto</h2>
     <div class="rule"></div>
   </div>
 
@@ -537,14 +628,14 @@
         <span class="title">~/proyectos/tracki</span>
       </div>
       <div class="terminal-body">
-        <span class="status">completado</span>
-        <h3>Tracki — Finanzas personales</h3>
-        <p>Aplicación de finanzas personales construida con <strong style="color:var(--text)">Next.js 16 (App Router)</strong> y <strong style="color:var(--text)">React 19</strong>, con <strong style="color:var(--text)">Supabase</strong> como backend de autenticación y base de datos Postgres. Centraliza cuentas bancarias, transacciones categorizadas y objetivos de ahorro, con un panel de estadísticas construido con Recharts.</p>
+        <span class="status" data-i18n="work.status">completado</span>
+        <h3 data-i18n="work.project">Tracki — Finanzas personales</h3>
+        <p data-i18n-html="work.desc">Aplicación de finanzas personales construida con <strong>Next.js 16 (App Router)</strong> y <strong>React 19</strong>, con <strong>Supabase</strong> como backend de autenticación y base de datos Postgres. Centraliza cuentas bancarias, transacciones categorizadas y objetivos de ahorro, con un panel de estadísticas construido con Recharts.</p>
         <ul class="feature-list">
-          <li>Rutas del dashboard protegidas con Middleware de Next.js (Edge Runtime) + Row Level Security de Supabase a nivel de base de datos</li>
-          <li>Gestión de cuentas, transacciones y objetivos de ahorro con seguimiento de progreso</li>
-          <li>Estadísticas en tiempo real: evolución del balance, gasto por categoría y por mes</li>
-          <li>Filtrado global por cuenta mediante Context API, con animaciones de Framer Motion</li>
+          <li data-i18n="work.f1">Rutas del dashboard protegidas con Middleware de Next.js (Edge Runtime) + Row Level Security de Supabase a nivel de base de datos</li>
+          <li data-i18n="work.f2">Gestión de cuentas, transacciones y objetivos de ahorro con seguimiento de progreso</li>
+          <li data-i18n="work.f3">Estadísticas en tiempo real: evolución del balance, gasto por categoría y por mes</li>
+          <li data-i18n="work.f4">Filtrado global por cuenta mediante Context API, con animaciones de Framer Motion</li>
         </ul>
         <div class="stack-chips">
           <span class="chip">Next.js 16</span>
@@ -558,29 +649,29 @@
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/rubengiliramirez/tracki" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 0C5.37 0 0 5.5 0 12.3c0 5.44 3.44 10.05 8.21 11.68.6.12.82-.27.82-.6 0-.29-.01-1.05-.02-2.06-3.34.75-4.04-1.65-4.04-1.65-.55-1.43-1.34-1.81-1.34-1.81-1.09-.77.08-.75.08-.75 1.21.09 1.84 1.28 1.84 1.28 1.07 1.87 2.81 1.33 3.5 1.02.11-.79.42-1.33.76-1.64-2.67-.31-5.47-1.38-5.47-6.15 0-1.36.47-2.47 1.24-3.34-.12-.31-.54-1.57.12-3.28 0 0 1.01-.33 3.3 1.28a11.2 11.2 0 0 1 6 0c2.29-1.61 3.3-1.28 3.3-1.28.66 1.71.24 2.97.12 3.28.77.87 1.24 1.98 1.24 3.34 0 4.78-2.81 5.83-5.49 6.14.43.38.82 1.13.82 2.28 0 1.65-.02 2.98-.02 3.38 0 .33.22.72.83.6C20.57 22.34 24 17.73 24 12.3 24 5.5 18.63 0 12 0Z"/></svg>
-            Ver Código en GitHub
+            <span data-i18n="work.github">Ver Código en GitHub</span>
           </a>
           <a class="btn btn-outline" href="https://tracki-seven.vercel.app/" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
-            Ver Demo en Vivo
+            <span data-i18n="work.demo">Ver Demo en Vivo</span>
           </a>
         </div>
-        <span class="demo-note">Desplegada en Vercel. La demo es totalmente funcional: puedes registrarte con cualquier correo y probar la gestión de cuentas, transacciones y objetivos con datos reales.</span>
+        <span class="demo-note" data-i18n="work.note">Desplegada en Vercel. La demo es totalmente funcional: puedes registrarte con cualquier correo y probar la gestión de cuentas, transacciones y objetivos con datos reales.</span>
       </div>
     </div>
 
     <div class="work-side">
       <div class="stat-card reveal">
         <div class="num">4</div>
-        <div class="label">Módulos: cuentas, transacciones, objetivos y estadísticas</div>
+        <div class="label" data-i18n="stat.modules">Módulos: cuentas, transacciones, objetivos y estadísticas</div>
       </div>
       <div class="stat-card reveal">
         <div class="num">RLS</div>
-        <div class="label">Seguridad reforzada a nivel de base de datos con Row Level Security de Supabase</div>
+        <div class="label" data-i18n="stat.rls">Seguridad reforzada a nivel de base de datos con Row Level Security de Supabase</div>
       </div>
       <div class="stat-card reveal">
         <div class="num">100%</div>
-        <div class="label">Funcional de extremo a extremo: registro, login y gestión de datos reales</div>
+        <div class="label" data-i18n="stat.e2e">Funcional de extremo a extremo: registro, login y gestión de datos reales</div>
       </div>
     </div>
   </div>
@@ -589,10 +680,10 @@
 <section id="contact">
   <div class="section-head">
     <span class="section-num">03</span>
-    <h2>Contacto</h2>
+    <h2 data-i18n="contact.title">Contacto</h2>
     <div class="rule"></div>
   </div>
-  <p class="big reveal">¿Hablamos de tu próximo proyecto?</p>
+  <p class="big reveal" data-i18n="contact.big">¿Hablamos de tu próximo proyecto?</p>
   <div class="contact-row reveal">
     <a class="contact-link" href="mailto:rubenglramirez@gmail.com">rubenglramirez@gmail.com →</a>
     <a class="contact-link" href="https://github.com/rubengiliramirez" target="_blank" rel="noopener">github.com/rubengiliramirez →</a>
@@ -602,13 +693,182 @@
 </main>
 
 <footer>
-  <span>© <span id="year">2026</span> Rubén Gili Ramírez. Todos los derechos reservados.</span>
-  <span>Diseñado y construido a mano</span>
+  <span>© <span id="year">2026</span> Rubén Gili Ramírez. <span data-i18n="footer.rights">Todos los derechos reservados.</span></span>
+  <span data-i18n="footer.handmade">Diseñado y construido a mano</span>
 </footer>
 
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 
 <script>
+  // ==========================================================================
+  // i18n — conmutador ES/EN
+  // --------------------------------------------------------------------------
+  // Va PRIMERO y de forma síncrona, justo después del contenido: así el
+  // intercambio de cadenas ocurre antes del primer pintado en la práctica
+  // totalidad de los casos, y un visitante con EN guardado no ve un destello
+  // en español. (En la primera visita el preloader cubre la pantalla de todos
+  // modos.) Contrapartida asumida: sin recarga no hay URL por idioma, así que
+  // los buscadores indexan sólo la versión servida en el HTML, que es ES.
+  //
+  // El marcado se anota con tres atributos:
+  //   data-i18n       → sustituye textContent (el 90% de los casos)
+  //   data-i18n-html  → sustituye innerHTML (cadenas con <strong> dentro).
+  //                     Seguro aquí porque el contenido es estático y de autor:
+  //                     NUNCA debe usarse con datos de un formulario o una URL.
+  //   data-i18n-aria  → sustituye el atributo aria-label
+  // ==========================================================================
+  (function(){
+    const I18N = {
+      es: {
+        'meta.title':      'Rubén Gili Ramírez — Desarrollador',
+        'meta.desc':       'Portfolio de Rubén Gili Ramírez, estudiante de DAM especializado en frontend y bases de datos.',
+        'skip':            'Saltar al contenido',
+        'nav.aria':        'Navegación principal',
+        'nav.home':        'Inicio',
+        'nav.about':       'Sobre mí',
+        'nav.work':        'Proyecto',
+        'nav.contact':     'Contacto',
+        'lang.action':     'Cambiar el idioma a inglés',
+        'hero.eyebrow':    'Desarrollo de Aplicaciones Multiplataforma',
+        'hero.role':       'Estudiante de 2º de DAM enfocado en frontend y bases de datos. Construyo interfaces cuidadas sobre sistemas que funcionan de verdad.',
+        'hero.scroll':     'Desplázate',
+        'about.title':     'Sobre mí',
+        'about.p1':        'Estoy cursando <strong>2º de Grado Superior en DAM</strong>, y de todo lo que he tocado hasta ahora, lo que más me engancha es el <strong>frontend</strong> y el diseño de <strong>bases de datos</strong>: la parte que se ve y la que sostiene todo por debajo.',
+        'about.p2':        'Me defino como una persona responsable y comprometida. Trabajo bien en equipo y me adapto con facilidad a nuevas tecnologías, entornos y formas de trabajar, algo que he podido comprobar en cada proyecto que empiezo desde cero.',
+        'trait.responsible':'Responsable',
+        'trait.committed': 'Comprometido',
+        'trait.team':      'Trabajo en equipo',
+        'trait.adaptable': 'Adaptable',
+        'work.title':      'Proyecto',
+        'work.status':     'completado',
+        'work.project':    'Tracki — Finanzas personales',
+        'work.desc':       'Aplicación de finanzas personales construida con <strong>Next.js 16 (App Router)</strong> y <strong>React 19</strong>, con <strong>Supabase</strong> como backend de autenticación y base de datos Postgres. Centraliza cuentas bancarias, transacciones categorizadas y objetivos de ahorro, con un panel de estadísticas construido con Recharts.',
+        'work.f1':         'Rutas del dashboard protegidas con Middleware de Next.js (Edge Runtime) + Row Level Security de Supabase a nivel de base de datos',
+        'work.f2':         'Gestión de cuentas, transacciones y objetivos de ahorro con seguimiento de progreso',
+        'work.f3':         'Estadísticas en tiempo real: evolución del balance, gasto por categoría y por mes',
+        'work.f4':         'Filtrado global por cuenta mediante Context API, con animaciones de Framer Motion',
+        'work.github':     'Ver Código en GitHub',
+        'work.demo':       'Ver Demo en Vivo',
+        'work.note':       'Desplegada en Vercel. La demo es totalmente funcional: puedes registrarte con cualquier correo y probar la gestión de cuentas, transacciones y objetivos con datos reales.',
+        'stat.modules':    'Módulos: cuentas, transacciones, objetivos y estadísticas',
+        'stat.rls':        'Seguridad reforzada a nivel de base de datos con Row Level Security de Supabase',
+        'stat.e2e':        'Funcional de extremo a extremo: registro, login y gestión de datos reales',
+        'contact.title':   'Contacto',
+        'contact.big':     '¿Hablamos de tu próximo proyecto?',
+        'footer.rights':   'Todos los derechos reservados.',
+        'footer.handmade': 'Diseñado y construido a mano'
+      },
+      en: {
+        'meta.title':      'Rubén Gili Ramírez — Developer',
+        'meta.desc':       'Portfolio of Rubén Gili Ramírez, Multiplatform Application Development student specialising in frontend and databases.',
+        'skip':            'Skip to content',
+        'nav.aria':        'Main navigation',
+        'nav.home':        'Home',
+        'nav.about':       'About',
+        'nav.work':        'Project',
+        'nav.contact':     'Contact',
+        'lang.action':     'Switch language to Spanish',
+        'hero.eyebrow':    'Multiplatform Application Development',
+        'hero.role':       'Second-year Multiplatform Application Development student focused on frontend and databases. I build careful interfaces on top of systems that actually work.',
+        'hero.scroll':     'Scroll',
+        'about.title':     'About me',
+        'about.p1':        'I am in my <strong>second year of a Higher Vocational Degree in Multiplatform Application Development</strong>, and of everything I have worked with so far, what hooks me most is <strong>frontend</strong> and <strong>database</strong> design: the part you see and the part holding it all up underneath.',
+        'about.p2':        'I would describe myself as responsible and committed. I work well in a team and adapt easily to new technologies, environments and ways of working — something I have seen proved on every project I start from scratch.',
+        'trait.responsible':'Responsible',
+        'trait.committed': 'Committed',
+        'trait.team':      'Teamwork',
+        'trait.adaptable': 'Adaptable',
+        'work.title':      'Project',
+        'work.status':     'completed',
+        'work.project':    'Tracki — Personal finance',
+        'work.desc':       'Personal finance application built with <strong>Next.js 16 (App Router)</strong> and <strong>React 19</strong>, with <strong>Supabase</strong> as the authentication backend and Postgres database. It brings together bank accounts, categorised transactions and savings goals, with a statistics panel built with Recharts.',
+        'work.f1':         'Dashboard routes protected with Next.js Middleware (Edge Runtime) + Supabase Row Level Security at database level',
+        'work.f2':         'Account, transaction and savings-goal management with progress tracking',
+        'work.f3':         'Real-time statistics: balance evolution, spending by category and by month',
+        'work.f4':         'Global per-account filtering via Context API, with Framer Motion animations',
+        'work.github':     'View Code on GitHub',
+        'work.demo':       'View Live Demo',
+        'work.note':       'Deployed on Vercel. The demo is fully functional: sign up with any email address and try out account, transaction and goal management with real data.',
+        'stat.modules':    'Modules: accounts, transactions, goals and statistics',
+        'stat.rls':        'Hardened security at database level with Supabase Row Level Security',
+        'stat.e2e':        'Functional end to end: sign-up, login and real data management',
+        'contact.title':   'Contact',
+        'contact.big':     'Shall we talk about your next project?',
+        'footer.rights':   'All rights reserved.',
+        'footer.handmade': 'Designed and built by hand'
+      }
+    };
+
+    const STORAGE_KEY = 'rgr_lang';
+    const root = document.documentElement;
+    const btn = document.getElementById('langToggle');
+    const metaDesc = document.querySelector('meta[name="description"]');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const SWAP_MS = reducedMotion ? 0 : 180;
+
+    function applyLang(lang){
+      const dict = I18N[lang];
+      root.setAttribute('lang', lang);
+      document.title = dict['meta.title'];
+      if(metaDesc){ metaDesc.setAttribute('content', dict['meta.desc']); }
+
+      document.querySelectorAll('[data-i18n]').forEach(el=>{
+        const v = dict[el.dataset.i18n];
+        if(v !== undefined){ el.textContent = v; }
+      });
+      // innerHTML sólo para cadenas del diccionario, que son estáticas y de
+      // autor. Nunca para datos externos.
+      document.querySelectorAll('[data-i18n-html]').forEach(el=>{
+        const v = dict[el.dataset.i18nHtml];
+        if(v !== undefined){ el.innerHTML = v; }
+      });
+      document.querySelectorAll('[data-i18n-aria]').forEach(el=>{
+        const v = dict[el.dataset.i18nAria];
+        if(v !== undefined){ el.setAttribute('aria-label', v); }
+      });
+
+      try{ localStorage.setItem(STORAGE_KEY, lang); }catch(e){ /* sin persistencia */ }
+    }
+
+    function setLang(lang, animate){
+      if(!I18N[lang] || lang === root.getAttribute('lang')) return;
+      if(animate && SWAP_MS){
+        root.classList.add('lang-swapping');
+        setTimeout(()=>{
+          applyLang(lang);
+          root.classList.remove('lang-swapping');
+        }, SWAP_MS);
+      } else {
+        applyLang(lang);
+      }
+    }
+
+    // Idioma inicial: 1) lo que el visitante eligió la última vez;
+    // 2) si nunca eligió, su navegador — el HTML se sirve en español, así que
+    //    sólo se conmuta a EN cuando el navegador NO es español.
+    // Para forzar siempre español por defecto, deja sólo `let initial = 'es';`.
+    let initial = 'es';
+    try{
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if(saved && I18N[saved]){
+        initial = saved;
+      } else if(!(navigator.language || '').toLowerCase().startsWith('es')){
+        initial = 'en';
+      }
+    }catch(e){ /* almacenamiento no disponible: se queda en español */ }
+
+    // i18n-init desactiva la transición del indicador durante el arranque: si
+    // el idioma guardado es EN debe aparecer ya a la derecha, no deslizarse
+    // solo al cargar la página.
+    root.classList.add('i18n-init');
+    if(initial !== 'es'){ applyLang(initial); }
+    requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove('i18n-init')));
+
+    btn.addEventListener('click', ()=>{
+      setLang(root.getAttribute('lang') === 'es' ? 'en' : 'es', true);
+    });
+  })();
+
   // ---------- Preloader (solo se muestra la primera vez por sesión) ----------
   // sessionStorage y no localStorage: la animación de marca debe verse una vez
   // por pestaña. Con localStorage, quien vuelve una semana después no la vería
