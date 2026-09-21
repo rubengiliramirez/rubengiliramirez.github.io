@@ -107,6 +107,8 @@
     --panel-line: #22263a;   /* Bordes de 1px, separadores y reglas (1.32:1 → nunca texto) */
     --bg-glow:    #10121c;   /* Centro del degradado radial del preloader */
     --dot:        #2a2d3d;   /* Puntos decorativos de la barra de terminal */
+    --nav-bg:     rgba(10,10,18,0.72);  /* Barra al hacer scroll (= --bg al 72%) */
+    --nav-bg-solid: rgba(10,10,18,0.96);/* Misma barra sin backdrop-filter (fallback) */
 
     /* ---- Acentos ---- */
     --cyan:       #2de2ff;   /* Primario: interacción, foco, estado activo — 12.61:1 (AAA) */
@@ -119,7 +121,9 @@
   }
 
   *{ margin:0; padding:0; box-sizing:border-box; }
-  html{ scroll-behavior:smooth; }
+  /* scroll-padding-top reserva la altura de la barra compacta: al saltar a un
+     ancla, el destino aterriza debajo del navbar y no tapado por él. */
+  html{ scroll-behavior:smooth; scroll-padding-top:76px; }
 
   body{
     background:var(--bg);
@@ -188,9 +192,20 @@
                                    cada [data-i18n] para no pisar la transición
                                    de .reveal en los elementos que llevan ambas.
 
+     Navbar — transición de estado, no bucle:
+       .scrolled     0.35s bezier  Al salir del hero, la barra compacta su alto
+                                   (26→14px), gana fondo translúcido con
+                                   desenfoque y borde inferior, y suelta el
+                                   mix-blend-mode. Resuelve que el contenido
+                                   pasara por debajo de una barra transparente
+                                   y los textos se superpusieran ilegibles.
+                                   El disparo es un IntersectionObserver sobre
+                                   un centinela, no un listener de scroll.
+
      Animaciones orquestadas desde JS (ver el bloque JS al final del body):
        Preloader  — sessionStorage + duración mínima 1900ms + failsafe 4000ms
        Idioma     — localStorage + crossfade de 180ms antes de sustituir
+       Navbar     — IntersectionObserver sobre #nav-sentinel (72px), permanente
        Revelado   — IntersectionObserver th:0.15, stagger (i%4)*80ms, unobserve
        Barras     — IntersectionObserver th:0.40, scaleX(--level), unobserve
        Nav activo — IntersectionObserver th:0.50, permanente (no se desconecta)
@@ -247,20 +262,56 @@
   @keyframes ringOut{ to{ opacity:0; transform:scale(1.3); } }
 
   /* ---------- NAV ---------- */
-  /* mix-blend-mode va en `nav ul` y NO en `nav`: el modo de fusión se aplica al
+  /* DOS ESTADOS, y el motivo de que sean dos:
+     · Sobre el hero (estado por defecto) la barra es transparente y la lista
+       usa mix-blend-mode:difference, que invierte los enlaces contra lo que
+       tengan detrás. Funciona porque detrás sólo hay fondo y el logo del hero.
+     · Fuera del hero ese mismo blend es el problema: el contenido de la página
+       pasa por debajo de una barra sin fondo y los dos textos se superponen e
+       invierten uno contra otro hasta volverse ilegibles. Por eso .scrolled
+       retira el blend, pone un fondo translúcido con desenfoque, marca el
+       borde inferior y compacta la altura. El contenido sigue pasando por
+       debajo, pero contra una superficie propia: separación clara y legible.
+
+     mix-blend-mode va en `nav ul` y NO en `nav`: el modo de fusión se aplica al
      elemento entero como grupo, así que un hijo no puede excluirse. Con el
      blend en `nav`, el conmutador de idioma se renderizaría con sus colores
-     invertidos. Moviéndolo a la lista, los enlaces conservan exactamente el
-     mismo comportamiento (nav no tiene fondo propio) y el botón queda fuera.
+     invertidos, y el fondo de .scrolled se invertiría contra la página.
      VERIFICAR EN SAFARI: la combinación de mix-blend-mode con position:fixed
-     ha producido artefactos de repintado en algunas versiones. Alternativa si
-     aparecen: fondo semitransparente + backdrop-filter:blur(12px). */
+     ha producido artefactos de repintado en algunas versiones. Si aparecen,
+     basta con aplicar el estado .scrolled también en el hero. */
   nav{
     position:fixed; top:0; left:0; right:0; z-index:100;
     display:flex; justify-content:space-between; align-items:center; gap:20px;
     padding:26px clamp(20px,5vw,64px);
+    background-color:transparent;
+    border-bottom:1px solid transparent;
+    transition:padding 0.35s cubic-bezier(.16,1,.3,1),
+               background-color 0.35s ease,
+               border-color 0.35s ease,
+               box-shadow 0.35s ease;
   }
+  nav.scrolled{
+    padding-top:14px; padding-bottom:14px;
+    background-color:var(--nav-bg);
+    -webkit-backdrop-filter:saturate(140%) blur(14px);
+    backdrop-filter:saturate(140%) blur(14px);
+    border-bottom-color:var(--panel-line);
+    box-shadow:0 12px 32px -24px rgba(0,0,0,0.9);
+  }
+  /* Sin backdrop-filter (Firefox antiguo, algunos móviles) el desenfoque no
+     existe y una barra al 72% dejaría traslucir el texto de debajo: se sube a
+     casi opaca para que la legibilidad no dependa de una función opcional. */
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    nav.scrolled{ background-color:var(--nav-bg-solid); }
+  }
+  /* Centinela de 72px en el origen del documento: mientras está a la vista,
+     estamos arriba del todo. Ver el módulo JS del navbar. */
+  #nav-sentinel{ position:absolute; top:0; left:0; width:1px; height:72px; pointer-events:none; }
+
   nav ul{ list-style:none; display:flex; gap:clamp(18px,3vw,44px); font-size:0.92rem; mix-blend-mode:difference; }
+  /* Con fondo propio, el blend sobra: los enlaces pasan a color explícito. */
+  nav.scrolled ul{ mix-blend-mode:normal; color:var(--text); }
   nav ul a{ position:relative; padding-bottom:4px; transition:color 0.3s ease; }
   /* width + left simultáneos: la línea crece desde el centro hacia los lados,
      en lugar de barrer desde la izquierda. */
@@ -528,6 +579,12 @@
 </noscript>
 </head>
 <body class="locked">
+
+<!-- Centinela del navbar: un bloque invisible de 72px en el origen del
+     documento. Mientras el navegador lo tiene a la vista estamos arriba del
+     todo; en cuanto sale, la barra pasa a su estado compacto con fondo. Evita
+     un listener de scroll (ver el módulo JS del navbar). -->
+<div id="nav-sentinel" aria-hidden="true"></div>
 
 <a href="#main" class="skip-link" data-i18n="skip">Saltar al contenido</a>
 
@@ -942,6 +999,19 @@
     });
   }, { threshold:0.4 });
   skillBars.forEach(el=>io2.observe(el));
+
+  // ---------- Navbar: transparente sobre el hero, sólido al hacer scroll ----------
+  // Se observa un centinela de 72px situado en el origen del documento en vez
+  // de escuchar 'scroll': el callback se ejecuta sólo en los dos cruces del
+  // borde, no en cada fotograma de desplazamiento. Coste durante el scroll: 0.
+  (function(){
+    const nav = document.querySelector('nav');
+    const sentinel = document.getElementById('nav-sentinel');
+    if(!nav || !sentinel) return;
+    new IntersectionObserver(([entry])=>{
+      nav.classList.toggle('scrolled', !entry.isIntersecting);
+    }, { threshold:0 }).observe(sentinel);
+  })();
 
   // ---------- Active nav link on scroll ----------
   // Este observador NO se desconecta: su función es permanente.
