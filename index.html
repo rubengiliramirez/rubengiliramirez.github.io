@@ -1,23 +1,109 @@
 <!DOCTYPE html>
+<!--
+  ============================================================================
+  PORTFOLIO — Rubén Gili Ramírez
+  ----------------------------------------------------------------------------
+  STACK Y JUSTIFICACIÓN DE CADA DECISIÓN TÉCNICA
+  (documentación completa en README.md · §2)
+
+  · HTML5 semántico plano — no React/Vue/Astro.
+    4 secciones de contenido estático: no hay estado de aplicación, ni rutas,
+    ni datos que cambien en runtime. Los tres problemas que resuelve un
+    framework no existen aquí. React costaría ~45KB gzip de runtime + build
+    para renderizar contenido que ya viene terminado. Ventaja añadida: el
+    contenido es indexable al instante y legible sin JavaScript.
+
+  · CSS nativo con Custom Properties — no Sass/Tailwind/CSS-in-JS.
+    De Sass sólo necesitaríamos variables y anidamiento; las Custom Properties
+    cubren las variables de forma nativa y con una ventaja decisiva: son
+    variables en RUNTIME (legibles/modificables desde JS y media queries), no
+    sustituciones en compilación. Tailwind aporta valor en equipos grandes
+    donde el coste es la deriva del CSS; en un archivo de un solo autor sólo
+    añade ruido al HTML y un paso de build.
+
+  · JavaScript vanilla ES2015+ — no jQuery.
+    querySelectorAll, classList, dataset y addEventListener cubren todo lo
+    necesario. jQuery abstraía incompatibilidades que hoy no se dan. El código
+    se aísla en IIFE para no contaminar el objeto global.
+
+  · Canvas 2D nativo para las partículas — no Three.js (ver comentario en el
+    módulo de partículas, al final del documento).
+
+  · IntersectionObserver — no listeners de 'scroll'.
+    Un listener de scroll se dispara decenas de veces por segundo en el hilo
+    principal y obliga a getBoundingClientRect() → reflow síncrono.
+    IntersectionObserver delega el cálculo al navegador, asíncrono y fuera del
+    hilo principal, e invoca el callback sólo al cruzar el umbral.
+
+  · sessionStorage para el preloader — no localStorage.
+    La animación de marca debe verse UNA VEZ POR PESTAÑA. Con localStorage,
+    quien vuelve una semana después no la vería nunca; sin persistencia, la
+    vería en cada navegación interna. sessionStorage acierta el punto medio.
+
+  · Google Fonts con preconnect — única dependencia externa.
+    Se cargan pesos específicos (no familias completas) con display=swap para
+    evitar FOIT. Los dos preconnect adelantan DNS+TCP+TLS entre 100 y 300 ms.
+    Mitigación del punto único de fallo: 'sans-serif' como fallback en ambas
+    declaraciones font-family.
+
+  Dependencias de terceros: 0 · Paso de build: ninguno · Peticiones HTTP: 4
+  ============================================================================
+-->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rubén Gili Ramírez — Desarrollador</title>
 <meta name="description" content="Portfolio de Rubén Gili Ramírez, estudiante de DAM especializado en frontend y bases de datos.">
+<meta name="author" content="Rubén Gili Ramírez">
+<meta name="theme-color" content="#0a0a12">
+
+<!-- ┌──────────────────────────────────────────────────────────────────────┐
+     │ IMPORTANTE: sustituye TU-DOMINIO.com por tu dominio real antes de    │
+     │ desplegar. Open Graph EXIGE URLs absolutas: las rutas relativas no   │
+     │ funcionan. Crea también og-image.png a 1200x630 px.                  │
+     └──────────────────────────────────────────────────────────────────────┘ -->
+<link rel="canonical" href="https://TU-DOMINIO.com/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://TU-DOMINIO.com/">
+<meta property="og:title" content="Rubén Gili Ramírez — Desarrollador">
+<meta property="og:description" content="Portfolio de Rubén Gili Ramírez, estudiante de DAM especializado en frontend y bases de datos.">
+<meta property="og:image" content="https://TU-DOMINIO.com/og-image.png">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Rubén Gili Ramírez — Desarrollador">
+<meta name="twitter:description" content="Portfolio de Rubén Gili Ramírez, estudiante de DAM especializado en frontend y bases de datos.">
+<meta name="twitter:image" content="https://TU-DOMINIO.com/og-image.png">
+
 <link rel="icon" type="image/png" href="logo-rgr.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* ==========================================================================
+     SISTEMA DE DISEÑO — TOKENS
+     --------------------------------------------------------------------------
+     Regla: ningún componente usa valores hexadecimales literales. Si hace
+     falta un color nuevo, se añade aquí como token.
+     Ratios de contraste calculados según WCAG 2.1 (AA = 4.5:1 · AAA = 7:1).
+     ========================================================================== */
   :root{
-    --bg: #0a0a12;
-    --panel: #12141f;
-    --panel-line: #22263a;
-    --cyan: #2de2ff;
-    --magenta: #ff2bd6;
-    --text: #e8ecf5;
-    --text-dim: #8b8fa3;
+    /* ---- Superficies ---- */
+    --bg:         #0a0a12;   /* Fondo base de la página */
+    --panel:      #12141f;   /* Superficie elevada: sección Proyecto, panel de stack */
+    --terminal:   #0d0f18;   /* Superficie hundida: interior de terminal y stat-cards */
+    --panel-line: #22263a;   /* Bordes de 1px, separadores y reglas (1.32:1 → nunca texto) */
+    --bg-glow:    #10121c;   /* Centro del degradado radial del preloader */
+    --dot:        #2a2d3d;   /* Puntos decorativos de la barra de terminal */
+
+    /* ---- Acentos ---- */
+    --cyan:       #2de2ff;   /* Primario: interacción, foco, estado activo — 12.61:1 (AAA) */
+    --magenta:    #ff2bd6;   /* Secundario: numeración, viñetas, selección — 6.17:1 (AA) */
+    --on-accent:  #06060a;   /* Texto sobre acento — 12.94:1 sobre cian · 6.33:1 sobre magenta */
+
+    /* ---- Texto ---- */
+    --text:       #e8ecf5;   /* Principal — 16.66:1 sobre --bg (AAA) */
+    --text-dim:   #8b8fa3;   /* Secundario — 6.16:1 sobre --bg (AA) */
   }
 
   *{ margin:0; padding:0; box-sizing:border-box; }
@@ -31,11 +117,64 @@
   }
   body.locked{ overflow:hidden; height:100vh; }
 
-  h1,h2,h3,.mono-label{
+  /* .big se incluye aquí porque, al pasar de <h2> a <p> por jerarquía
+     semántica (ver README §2 de la revisión), dejaría de heredar Rajdhani. */
+  h1,h2,h3,.mono-label,.big{
     font-family:'Rajdhani', sans-serif;
     font-weight:700;
     letter-spacing:0.02em;
   }
+
+  /* El landmark recibe foco programático desde el skip link (tabindex="-1"),
+     pero no debe mostrar anillo: el foco ya se comunica por el salto. */
+  main:focus{ outline:none; }
+
+  /* ==========================================================================
+     SISTEMA DE ANIMACIÓN
+     --------------------------------------------------------------------------
+     Principios:
+       1. Toda animación cumple una función: orientar, confirmar, jerarquizar
+          o dar carácter de marca. Ninguna es decorativa sin propósito.
+       2. Sólo se animan `transform` y `opacity` en las animaciones continuas:
+          son las únicas propiedades que el compositor resuelve sin recalcular
+          layout ni repintar → 60 fps estables. Las excepciones (width,
+          padding-left, border-color) son microinteracciones puntuales de hover.
+       3. Curva de marca: cubic-bezier(.16,1,.3,1) — ease-out pronunciada.
+          Arranca rápido y frena largo. Se usa en preloader, botones, barras de
+          nivel y revelado al scroll para unificar el movimiento del sitio.
+          ease / ease-in-out queda para bucles ambientales y microinteracciones.
+       4. Las animaciones de un solo uso se desconectan (unobserve) tras
+          dispararse: repetirlas al subir y bajar resultaría mareante.
+       5. El movimiento nunca es la única fuente de información: todo el
+          contenido es legible y todo el estado perceptible sin animación.
+
+     Inventario de @keyframes:
+       logoIn        1.5s   bezier  Entrada del logo del preloader
+       ringIn        1.8s   bezier  Expansión del anillo (+0.15s de desfase)
+       glowPulse     2.4s∞  ease-io Latido del halo del preloader
+       logoOut       0.65s  ease    Salida del logo
+       ringOut       0.65s  ease    Salida del anillo
+       scrollpulse   2s∞    ease-io Parpadeo de la indicación de scroll
+       heroFloat     6s∞    ease-io Flotación vertical del logo del hero
+       heroGlow      5s∞    ease-io Respiración del halo del hero
+       heroRingSpin  18s∞   linear  Órbita del anillo del hero
+       heroSpin      6.5s∞  ease-io Balanceo 3D del logo (perspective:1400px)
+
+     Los cuatro bucles del hero (6 / 5 / 18 / 6.5 s) no son múltiplos entre sí
+     a propósito: al no sincronizarse, el conjunto nunca parece mecánico.
+
+     Animaciones orquestadas desde JS (ver el bloque JS al final del body):
+       Preloader  — sessionStorage + duración mínima 1900ms + failsafe 4000ms
+       Revelado   — IntersectionObserver th:0.15, stagger (i%4)*80ms, unobserve
+       Barras     — IntersectionObserver th:0.40, scaleX(--level), unobserve
+       Nav activo — IntersectionObserver th:0.50, permanente (no se desconecta)
+       Partículas — Canvas 2D, requestAnimationFrame, densidad = w*h/9000
+
+     Accesibilidad: prefers-reduced-motion se respeta en TRES capas —
+       (1) el barrido global de aquí abajo, que cubre todo el CSS presente y
+           futuro; (2) matchMedia en el preloader; (3) matchMedia en el canvas.
+       La tercera es imprescindible: el CSS no puede detener un bucle de JS.
+     ========================================================================== */
 
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important; }
@@ -48,7 +187,7 @@
   /* ================= PRELOADER ================= */
   #preloader{
     position:fixed; inset:0; z-index:999;
-    background:radial-gradient(ellipse at center, #10121c 0%, #06060a 100%);
+    background:radial-gradient(ellipse at center, var(--bg-glow) 0%, var(--on-accent) 100%);
     display:flex; align-items:center; justify-content:center;
     transition:opacity 0.7s ease, visibility 0.7s ease;
   }
@@ -79,6 +218,12 @@
   @keyframes ringOut{ to{ opacity:0; transform:scale(1.3); } }
 
   /* ---------- NAV ---------- */
+  /* mix-blend-mode:difference invierte el color de los enlaces respecto a lo
+     que tengan detrás: legibles sobre el fondo oscuro Y sobre el logo
+     luminoso del hero, sin necesidad de un fondo sólido.
+     VERIFICAR EN SAFARI: la combinación con position:fixed ha producido
+     artefactos de repintado en algunas versiones. Alternativa si aparecen:
+     fondo semitransparente + backdrop-filter:blur(12px). */
   nav{
     position:fixed; top:0; left:0; right:0; z-index:100;
     display:flex; justify-content:flex-start; align-items:center;
@@ -87,6 +232,8 @@
   }
   nav ul{ list-style:none; display:flex; gap:clamp(18px,3vw,44px); font-size:0.92rem; }
   nav ul a{ position:relative; padding-bottom:4px; transition:color 0.3s ease; }
+  /* width + left simultáneos: la línea crece desde el centro hacia los lados,
+     en lugar de barrer desde la izquierda. */
   nav ul a::after{
     content:''; position:absolute; left:50%; bottom:0; width:0; height:1px;
     background:var(--cyan); transition:width 0.35s ease, left 0.35s ease;
@@ -98,7 +245,7 @@
   /* ---------- SKIP LINK (accesibilidad) ---------- */
   .skip-link{
     position:fixed; top:-60px; left:16px; z-index:1000;
-    background:var(--cyan); color:#06060a; font-weight:600;
+    background:var(--cyan); color:var(--on-accent); font-weight:600;
     padding:12px 20px; border-radius:3px; font-size:0.9rem;
     transition:top 0.25s ease;
   }
@@ -120,6 +267,10 @@
   @keyframes scrollpulse{ 0%,100%{ opacity:0.3; } 50%{ opacity:1; } }
 
   /* ---------- HERO SPINNING LOGO ---------- */
+  /* perspective en el escenario + preserve-3d en el elemento rotado hacen que
+     rotateY/rotateX se rendericen con proyección en perspectiva real (el borde
+     que se aleja se estrecha), no como una deformación plana. Una imagen 2D
+     comportándose como un objeto con volumen, sin WebGL. */
   .hero-logo-stage{
     position:absolute;
     top:50%; right:5%;
@@ -164,6 +315,8 @@
     display:block; width:100%; height:auto;
     filter:drop-shadow(0 0 26px rgba(45,226,255,0.35)) drop-shadow(0 0 48px rgba(255,43,214,0.18));
   }
+  /* Bajo 900px se elimina el bloque entero: cuatro animaciones infinitas menos
+     en los dispositivos con menos batería. */
   @media (max-width:900px){
     .hero-logo-stage{ display:none; }
   }
@@ -180,6 +333,8 @@
   #about p{ font-size:clamp(1.05rem,1.6vw,1.25rem); line-height:1.8; color:var(--text-dim); max-width:62ch; }
   #about p + p{ margin-top:26px; }
   #about strong{ color:var(--text); font-weight:600; }
+  /* Distinción cromática semántica: cian = cualidades personales (.trait),
+     magenta = tecnologías (.chip). */
   .traits{ display:flex; flex-wrap:wrap; gap:10px; margin-top:32px; }
   .trait{ border:1px solid var(--panel-line); padding:9px 18px; font-size:0.85rem; color:var(--text-dim); border-radius:2px; transition:border-color 0.3s ease, color 0.3s ease, transform 0.3s ease; }
   .trait:hover{ border-color:var(--cyan); color:var(--text); transform:translateY(-2px); }
@@ -188,16 +343,29 @@
   .skills-panel h3{ font-size:1.1rem; margin-bottom:24px; color:var(--text-dim); font-weight:600; font-family:'Space Grotesk',sans-serif; }
   .skill-row{ display:flex; justify-content:space-between; align-items:center; padding:13px 0; border-bottom:1px solid var(--panel-line); font-size:0.98rem; }
   .skill-row:last-child{ border-bottom:none; }
-  .skill-bar{ width:110px; height:3px; background:#22263a; position:relative; overflow:hidden; }
-  .skill-bar span{ position:absolute; left:0; top:0; height:100%; background:linear-gradient(90deg, var(--cyan), var(--magenta)); transform:scaleX(0); transform-origin:left; transition:transform 1.1s cubic-bezier(.16,1,.3,1); }
-  .skill-bar.filled span{ transform:scaleX(1); }
+  .skill-bar{ width:110px; height:3px; background:var(--panel-line); position:relative; overflow:hidden; }
+  /* Se anima scaleX y no width: escalar es una operación del compositor,
+     cambiar el ancho fuerza recálculo de layout en cada fotograma. */
+  /* width:100% es imprescindible: un elemento absoluto con left:0, right:auto
+     y sin contenido tiene ancho 0, y escalar 0 sigue siendo 0. Sin esta línea
+     el relleno no se ve nunca, por mucho que scaleX se aplique. */
+  .skill-bar span{
+    position:absolute; left:0; top:0; width:100%; height:100%;
+    background:linear-gradient(90deg, var(--cyan), var(--magenta));
+    transform:scaleX(0); transform-origin:left;
+    transition:transform 1.1s cubic-bezier(.16,1,.3,1);
+  }
+  /* El nivel se declara por fila con --level (0 a 1); .filled lo aplica
+     al entrar en viewport. */
+  .skill-bar.filled span{ transform:scaleX(var(--level, 1)); }
 
   /* ---------- PROJECT ---------- */
   #work{ background:var(--panel); border-top:1px solid var(--panel-line); border-bottom:1px solid var(--panel-line); }
   .work-layout{ display:grid; grid-template-columns: 1.5fr 0.8fr; gap:32px; align-items:stretch; max-width:1180px; margin:0 auto; }
-  .terminal{ border:1px solid var(--panel-line); background:#0d0f18; box-shadow:0 40px 100px -40px rgba(45,226,255,0.15); }
+  /* Sombra de color, no gris: un halo cian proyectado hacia abajo. */
+  .terminal{ border:1px solid var(--panel-line); background:var(--terminal); box-shadow:0 40px 100px -40px rgba(45,226,255,0.15); }
   .terminal-bar{ display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--panel-line); }
-  .terminal-bar span{ width:10px; height:10px; border-radius:50%; background:#2a2d3d; flex-shrink:0; }
+  .terminal-bar span{ width:10px; height:10px; border-radius:50%; background:var(--dot); flex-shrink:0; }
   .terminal-bar .title{ margin-left:12px; font-size:0.82rem; color:var(--text-dim); font-family:'Space Grotesk',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .terminal-body{ padding:clamp(28px,4vw,52px); }
   .terminal-body h3{ font-size:clamp(1.6rem,3vw,2.2rem); color:var(--text); margin-bottom:6px; }
@@ -208,6 +376,7 @@
   .chip{ font-size:0.82rem; padding:6px 14px; border:1px solid var(--panel-line); color:var(--text-dim); transition:border-color 0.3s ease, color 0.3s ease; }
   .chip:hover{ border-color:var(--magenta); color:var(--text); }
   .feature-list{ list-style:none; margin-bottom:34px; }
+  /* Sangría de 22px para que las líneas que se envuelven queden alineadas. */
   .feature-list li{ color:var(--text-dim); font-size:0.98rem; padding:6px 0 6px 22px; position:relative; }
   .feature-list li::before{ content:'▸'; position:absolute; left:0; color:var(--magenta); }
 
@@ -218,27 +387,31 @@
     padding:13px 24px; border-radius:3px; cursor:pointer;
     transition:transform 0.3s cubic-bezier(.16,1,.3,1), box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
   }
+  /* Los SVG usan currentColor, por lo que heredan el color de cada estado. */
   .btn svg{ width:18px; height:18px; flex-shrink:0; }
-  .btn-primary{ background:linear-gradient(100deg, var(--cyan), var(--magenta)); color:#06060a; font-weight:600; border:1px solid transparent; }
+  .btn-primary{ background:linear-gradient(100deg, var(--cyan), var(--magenta)); color:var(--on-accent); font-weight:600; border:1px solid transparent; }
   .btn-primary:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -10px rgba(45,226,255,0.45); }
   .btn-outline{ border:1px solid var(--panel-line); color:var(--text); background:transparent; }
   .btn-outline:hover{ border-color:var(--cyan); color:var(--cyan); transform:translateY(-3px); }
   .demo-note{ font-size:0.78rem; color:var(--text-dim); opacity:0.8; }
 
   .work-side{ display:flex; flex-direction:column; gap:24px; }
-  .stat-card{ border:1px solid var(--panel-line); background:#0d0f18; padding:26px; flex:1; display:flex; flex-direction:column; justify-content:center; transition:border-color 0.3s ease; }
+  .stat-card{ border:1px solid var(--panel-line); background:var(--terminal); padding:26px; flex:1; display:flex; flex-direction:column; justify-content:center; transition:border-color 0.3s ease; }
   .stat-card:hover{ border-color:var(--cyan); }
   .stat-card .num{ font-family:'Rajdhani',sans-serif; font-size:2.4rem; font-weight:700; color:var(--cyan); line-height:1; margin-bottom:8px; }
   .stat-card .label{ font-size:0.85rem; color:var(--text-dim); }
 
   /* ---------- CONTACT ---------- */
   #contact{ text-align:left; }
-  #contact h2.big{ font-size:clamp(2.4rem,6vw,5rem); max-width:14ch; line-height:1.08; margin-bottom:44px; }
+  /* .big es un <p>, no un <h2>: es un reclamo visual, no un encabezado de
+     navegación. Mantiene el aspecto, deja limpio el esquema del documento. */
+  #contact .big{ font-size:clamp(2.4rem,6vw,5rem); max-width:14ch; line-height:1.08; margin-bottom:44px; }
   .contact-link{
     display:inline-flex; align-items:center; gap:14px; font-size:clamp(1.1rem,2vw,1.4rem);
     padding:18px 0; border-bottom:1px solid var(--panel-line); width:100%; max-width:520px; color:var(--text);
     transition:color 0.3s ease, padding-left 0.3s ease, border-color 0.3s ease;
   }
+  /* El desplazamiento de 10px acompaña a la flecha → del texto. */
   .contact-link:hover{ color:var(--cyan); padding-left:10px; border-color:var(--cyan); }
   .contact-row{ display:flex; flex-direction:column; }
 
@@ -261,10 +434,22 @@
     .work-side{ flex-direction:column; }
   }
 </style>
+
+<!-- Sin JavaScript, `body.locked` y el preloader a pantalla completa dejarían
+     el sitio inutilizable, y todo lo marcado con .reveal quedaría en opacity:0.
+     Este bloque garantiza que el portfolio se lee entero sin JS. -->
+<noscript>
+  <style>
+    #preloader{ display:none !important; }
+    body.locked{ overflow:auto !important; height:auto !important; }
+    .reveal{ opacity:1 !important; transform:none !important; }
+    .skill-bar span{ transform:scaleX(var(--level, 1)) !important; }
+  </style>
+</noscript>
 </head>
 <body class="locked">
 
-<a href="#about" class="skip-link">Saltar al contenido</a>
+<a href="#main" class="skip-link">Saltar al contenido</a>
 
 <div id="preloader" aria-hidden="true">
   <div class="preloader-logo-wrap">
@@ -283,6 +468,8 @@
   </ul>
 </nav>
 
+<main id="main" tabindex="-1">
+
 <section id="hero">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-inner">
@@ -298,7 +485,9 @@
     <div class="hero-logo-glow"></div>
     <div class="hero-logo-ring"></div>
     <div class="hero-logo-spin">
-      <img src="logo-rgr.png" alt="RGR">
+      <!-- Decorativo: el <h1> contiguo ya dice el nombre. Con alt="RGR" un
+           lector de pantalla lo anunciaría dos veces seguidas. -->
+      <img src="logo-rgr.png" alt="" aria-hidden="true">
     </div>
   </div>
 </section>
@@ -320,14 +509,16 @@
         <span class="trait">Adaptable</span>
       </div>
     </div>
+    <!-- AJUSTA --level (0 a 1) y aria-valuenow (0 a 100) a tu nivel real.
+         Los valores de abajo son un ejemplo: deben coincidir entre sí. -->
     <div class="skills-panel reveal">
       <h3>Stack</h3>
-      <div class="skill-row"><span>Java</span><div class="skill-bar"><span></span></div></div>
-      <div class="skill-row"><span>JavaScript</span><div class="skill-bar"><span></span></div></div>
-      <div class="skill-row"><span>HTML / CSS</span><div class="skill-bar"><span></span></div></div>
-      <div class="skill-row"><span>Bootstrap</span><div class="skill-bar"><span></span></div></div>
-      <div class="skill-row"><span>Spring Boot</span><div class="skill-bar"><span></span></div></div>
-      <div class="skill-row"><span>Python</span><div class="skill-bar"><span></span></div></div>
+      <div class="skill-row"><span id="sk-java">Java</span><div class="skill-bar" style="--level:.85" role="progressbar" aria-labelledby="sk-java" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
+      <div class="skill-row"><span id="sk-js">JavaScript</span><div class="skill-bar" style="--level:.80" role="progressbar" aria-labelledby="sk-js" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
+      <div class="skill-row"><span id="sk-htmlcss">HTML / CSS</span><div class="skill-bar" style="--level:.90" role="progressbar" aria-labelledby="sk-htmlcss" aria-valuenow="90" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
+      <div class="skill-row"><span id="sk-bootstrap">Bootstrap</span><div class="skill-bar" style="--level:.75" role="progressbar" aria-labelledby="sk-bootstrap" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
+      <div class="skill-row"><span id="sk-spring">Spring Boot</span><div class="skill-bar" style="--level:.65" role="progressbar" aria-labelledby="sk-spring" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
+      <div class="skill-row"><span id="sk-python">Python</span><div class="skill-bar" style="--level:.60" role="progressbar" aria-labelledby="sk-python" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
     </div>
   </div>
 </section>
@@ -366,11 +557,11 @@
         </div>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/rubengiliramirez/tracki" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.5 0 12.3c0 5.44 3.44 10.05 8.21 11.68.6.12.82-.27.82-.6 0-.29-.01-1.05-.02-2.06-3.34.75-4.04-1.65-4.04-1.65-.55-1.43-1.34-1.81-1.34-1.81-1.09-.77.08-.75.08-.75 1.21.09 1.84 1.28 1.84 1.28 1.07 1.87 2.81 1.33 3.5 1.02.11-.79.42-1.33.76-1.64-2.67-.31-5.47-1.38-5.47-6.15 0-1.36.47-2.47 1.24-3.34-.12-.31-.54-1.57.12-3.28 0 0 1.01-.33 3.3 1.28a11.2 11.2 0 0 1 6 0c2.29-1.61 3.3-1.28 3.3-1.28.66 1.71.24 2.97.12 3.28.77.87 1.24 1.98 1.24 3.34 0 4.78-2.81 5.83-5.49 6.14.43.38.82 1.13.82 2.28 0 1.65-.02 2.98-.02 3.38 0 .33.22.72.83.6C20.57 22.34 24 17.73 24 12.3 24 5.5 18.63 0 12 0Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 0C5.37 0 0 5.5 0 12.3c0 5.44 3.44 10.05 8.21 11.68.6.12.82-.27.82-.6 0-.29-.01-1.05-.02-2.06-3.34.75-4.04-1.65-4.04-1.65-.55-1.43-1.34-1.81-1.34-1.81-1.09-.77.08-.75.08-.75 1.21.09 1.84 1.28 1.84 1.28 1.07 1.87 2.81 1.33 3.5 1.02.11-.79.42-1.33.76-1.64-2.67-.31-5.47-1.38-5.47-6.15 0-1.36.47-2.47 1.24-3.34-.12-.31-.54-1.57.12-3.28 0 0 1.01-.33 3.3 1.28a11.2 11.2 0 0 1 6 0c2.29-1.61 3.3-1.28 3.3-1.28.66 1.71.24 2.97.12 3.28.77.87 1.24 1.98 1.24 3.34 0 4.78-2.81 5.83-5.49 6.14.43.38.82 1.13.82 2.28 0 1.65-.02 2.98-.02 3.38 0 .33.22.72.83.6C20.57 22.34 24 17.73 24 12.3 24 5.5 18.63 0 12 0Z"/></svg>
             Ver Código en GitHub
           </a>
           <a class="btn btn-outline" href="https://tracki-mkar.onrender.com" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
             Ver Demo en Vivo
           </a>
         </div>
@@ -401,12 +592,14 @@
     <h2>Contacto</h2>
     <div class="rule"></div>
   </div>
-  <h2 class="big reveal">¿Hablamos de tu próximo proyecto?</h2>
+  <p class="big reveal">¿Hablamos de tu próximo proyecto?</p>
   <div class="contact-row reveal">
     <a class="contact-link" href="mailto:rubenglramirez@gmail.com">rubenglramirez@gmail.com →</a>
     <a class="contact-link" href="https://github.com/rubengiliramirez" target="_blank" rel="noopener">github.com/rubengiliramirez →</a>
   </div>
 </section>
+
+</main>
 
 <footer>
   <span>© <span id="year">2026</span> Rubén Gili Ramírez. Todos los derechos reservados.</span>
@@ -417,18 +610,30 @@
 
 <script>
   // ---------- Preloader (solo se muestra la primera vez por sesión) ----------
+  // sessionStorage y no localStorage: la animación de marca debe verse una vez
+  // por pestaña. Con localStorage, quien vuelve una semana después no la vería
+  // nunca; sin persistencia, la vería en cada navegación interna.
   (function(){
     const pre = document.getElementById('preloader');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const alreadyVisited = sessionStorage.getItem('rgr_visited');
+
+    // sessionStorage puede lanzar en modo privado o con el almacenamiento
+    // bloqueado: si no está disponible degradamos a "mostrar siempre" en vez
+    // de romper y dejar la página bloqueada tras el velo.
+    let alreadyVisited = false;
+    try{
+      alreadyVisited = sessionStorage.getItem('rgr_visited') === 'true';
+      sessionStorage.setItem('rgr_visited', 'true');
+    }catch(e){ /* almacenamiento no disponible: continuamos sin persistencia */ }
 
     if(alreadyVisited){
       pre.style.display = 'none';
       document.body.classList.remove('locked');
       return;
     }
-    sessionStorage.setItem('rgr_visited', 'true');
 
+    // Duración mínima: evita que en una carga instantánea desde caché la
+    // animación aparezca como un parpadeo.
     const minDuration = reducedMotion ? 0 : 1900;
     const start = performance.now();
 
@@ -446,20 +651,30 @@
 
     if(document.readyState === 'complete'){ release(); }
     else { window.addEventListener('load', release); }
+    // Salvaguarda: un recurso lento nunca debe dejar al visitante atrapado.
     setTimeout(release, 4000);
   })();
 
   // ---------- Reveal on scroll ----------
+  // Umbral 0.15: el elemento empieza a aparecer cuando apenas asoma, de modo
+  // que la animación TERMINA justo cuando el usuario llega a leerlo.
+  // Stagger con módulo 4 (0/80/160/240ms): el patrón se reinicia cada cuatro
+  // elementos para que el último de la página no acumule segundos de retardo.
   const revealEls = document.querySelectorAll('.reveal');
   revealEls.forEach((el,i)=>{ el.style.transitionDelay = (i % 4) * 0.08 + 's'; });
   const io = new IntersectionObserver((entries)=>{
     entries.forEach(e=>{
+      // unobserve: animación de un solo uso. Repetirla al subir y bajar
+      // resultaría mareante, y seguir observando sería trabajo desperdiciado.
       if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
     });
   }, { threshold:0.15 });
   revealEls.forEach(el=>io.observe(el));
 
   // ---------- Skill bars fill when visible ----------
+  // Umbral 0.4 (más alto que el del revelado) a propósito: el panel debe estar
+  // claramente a la vista antes de que las barras se llenen, porque el llenado
+  // ES la información.
   const skillBars = document.querySelectorAll('.skill-bar');
   const io2 = new IntersectionObserver((entries)=>{
     entries.forEach(e=>{
@@ -469,6 +684,7 @@
   skillBars.forEach(el=>io2.observe(el));
 
   // ---------- Active nav link on scroll ----------
+  // Este observador NO se desconecta: su función es permanente.
   const navLinks = document.querySelectorAll('nav ul a[data-nav]');
   const trackedSections = document.querySelectorAll('section[id]');
   const io3 = new IntersectionObserver((entries)=>{
@@ -486,6 +702,15 @@
   // (antes usaba Three.js/WebGL solo para esto; una librería 3D completa
   // era excesivo para un fondo de partículas, así que se sustituye por
   // Canvas 2D puro, sin dependencias externas)
+  //
+  // Three.js: ~160KB gzip + 1 petición a CDN, de los cuales sólo se usaban
+  // escena, cámara y geometría de puntos. Iluminación, materiales, sombras,
+  // carga de modelos, raycasting y post-procesado quedaban sin usar. La
+  // reescritura ocupa ~60 líneas, elimina la dependencia y además permitió
+  // tres ajustes que con la librería habrían sido más costosos:
+  //   · densidad proporcional al área real del hero (w*h/9000, no un número fijo)
+  //   · devicePixelRatio limitado a 2 (evita renderizar 9x en pantallas 3x)
+  //   · composición 'lighter': los solapamientos suman luz → brillo aditivo
   (function(){
     const canvas = document.getElementById('hero-canvas');
     const hero = document.getElementById('hero');
@@ -494,8 +719,8 @@
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     let w, h, particles;
-    const cyan = '45,226,255';
-    const magenta = '255,43,214';
+    const cyan = '45,226,255';      // = var(--cyan), en componentes RGB para rgba()
+    const magenta = '255,43,214';   // = var(--magenta)
 
     function resize(){
       w = hero.clientWidth;
@@ -508,6 +733,8 @@
     }
 
     function createParticles(){
+      // Densidad constante en cualquier pantalla: un móvil no calcula tantas
+      // partículas como un monitor 4K.
       const count = Math.round((w * h) / 9000);
       particles = Array.from({ length: count }, () => ({
         x: Math.random() * w,
@@ -524,6 +751,8 @@
     createParticles();
     window.addEventListener('resize', () => { resize(); createParticles(); });
 
+    // Parallax de puntero: ±18px en X y ±12px en Y. La asimetría imita la del
+    // movimiento natural del ojo, que barre más en horizontal.
     let mouseX = 0, mouseY = 0;
     window.addEventListener('mousemove', (e) => {
       mouseX = (e.clientX / window.innerWidth - 0.5);
@@ -532,6 +761,8 @@
 
     function drawFrame(){
       ctx.clearRect(0, 0, w, h);
+      // El desplazamiento se aplica sólo al punto de dibujado, no a la
+      // posición almacenada: el campo no se deforma acumulativamente.
       const offsetX = mouseX * 18;
       const offsetY = mouseY * 12;
 
@@ -539,8 +770,10 @@
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
-        if(p.x < 0) p.x = w; if(p.x > w) p.x = 0;
-        if(p.y < 0) p.y = h; if(p.y > h) p.y = 0;
+
+        // Campo infinito: la partícula reaparece por el lado opuesto.
+        if(p.x < 0){ p.x = w; } else if(p.x > w){ p.x = 0; }
+        if(p.y < 0){ p.y = h; } else if(p.y > h){ p.y = 0; }
 
         ctx.beginPath();
         ctx.arc(p.x + offsetX, p.y + offsetY, p.r, 0, Math.PI * 2);
@@ -550,10 +783,38 @@
       ctx.globalCompositeOperation = 'source-over';
     }
 
+    // Capa 3 de prefers-reduced-motion: imprescindible, porque el CSS no puede
+    // detener un bucle de JS. Se dibuja un solo fotograma estático: la estética
+    // se conserva, el movimiento desaparece.
     if(reducedMotion){
       drawFrame();
     } else {
-      (function loop(){ drawFrame(); requestAnimationFrame(loop); })();
+      // El bucle sólo corre mientras el hero está en pantalla: fuera de
+      // viewport no tiene sentido gastar CPU/batería redibujando algo
+      // invisible mientras el visitante lee la sección de contacto.
+      let rafId = null;
+      function loop(){ drawFrame(); rafId = requestAnimationFrame(loop); }
+
+      new IntersectionObserver((entries)=>{
+        entries.forEach(e=>{
+          if(e.isIntersecting && rafId === null){
+            loop();
+          } else if(!e.isIntersecting && rafId !== null){
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+        });
+      }, { threshold: 0 }).observe(hero);
+
+      // Además, pausa al cambiar de pestaña.
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.hidden && rafId !== null){
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        } else if(!document.hidden && rafId === null && hero.getBoundingClientRect().bottom > 0){
+          loop();
+        }
+      });
     }
   })();
 </script>
