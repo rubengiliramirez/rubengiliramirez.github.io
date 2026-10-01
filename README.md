@@ -16,7 +16,7 @@ fonts/            DotGothic16 (fuente pixel), alojada en el propio sitio
 
 **Tipografía pixel a tamaños múltiplos de su rejilla.** DotGothic16 está dibujada sobre una rejilla de 16 px, así que el texto usa 16, 20, 24, 32, 48 y 64 px. A tamaños intermedios los píxeles se emborronan y letras como la `i` y la `l` se confunden.
 
-**Logo en ASCII generado desde la imagen.** La pantalla de entrada muestra el logo convertido a caracteres según el brillo de cada zona. Las líneas aparecen una a una y la pantalla se cierra con Enter, Escape o con el botón. Solo se muestra una vez por pestaña (`sessionStorage`).
+**Logo en ASCII generado desde la imagen.** La pantalla de entrada muestra el logo convertido a caracteres según el brillo de cada zona. Las líneas aparecen una a una. Al pulsar Enter, Escape o el botón, la pantalla se llena de caracteres que cambian sin parar y se deshacen celda a celda dejando ver la web (con `prefers-reduced-motion` se entra directamente). Solo se muestra una vez por pestaña (`sessionStorage`).
 
 **Fondo de caracteres con Canvas 2D.** Caracteres aleatorios que caen despacio, cambian de glifo y parpadean con opacidad baja para no competir con el texto. La cantidad es proporcional al tamaño de la ventana, el `devicePixelRatio` se limita a 2 y la animación se pausa cuando la pestaña está oculta.
 

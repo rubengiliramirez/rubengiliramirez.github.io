@@ -82,7 +82,6 @@
   }
   .js:not(.entered) #splash{ display:flex; }
   .js:not(.entered) body{ overflow:hidden; }
-  #splash.leaving{ opacity:0; visibility:hidden; }
   .ascii{
     font-family:var(--mono); color:#d0d0d0; white-space:pre; line-height:1.05;
     font-size:clamp(4px, 0.62vw, 8px); letter-spacing:0;
@@ -702,12 +701,63 @@
       if(done) return; done = true;
       document.removeEventListener('keydown', onKey);
       try{ sessionStorage.setItem('rgr_entered', '1'); }catch(e){}
-      splash.classList.add('leaving');
-      setTimeout(()=>{
-        root.classList.add('entered'); splash.remove();
+      const finish = ()=>{
         document.getElementById('main').focus({ preventScroll:true });
         setTitle(document.getElementById('t-profile'), true);
-      }, reduced ? 0 : 600);
+      };
+      if(reduced){ root.classList.add('entered'); splash.remove(); finish(); return; }
+      glitchTransition(()=>{ root.classList.add('entered'); splash.remove(); }, finish);
+    }
+
+    // Transición: la pantalla se llena de caracteres que cambian sin parar
+    // y luego se deshacen celda a celda dejando ver la web.
+    function glitchTransition(onCovered, onDone){
+      const cv = document.createElement('canvas');
+      cv.setAttribute('aria-hidden', 'true');
+      cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:250;pointer-events:none';
+      document.body.appendChild(cv);
+      const g = cv.getContext('2d');
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = window.innerWidth, H = window.innerHeight;
+      cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const CW = 13, CH = 21, cols = Math.ceil(W / CW), rows = Math.ceil(H / CH);
+      const SET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789[](){}<>/\\|@#$%&*+=-_?!~:;.,^';
+      const BLOCKS = '░▒▓█';
+      const cells = [];
+      for(let i = 0; i < cols * rows; i++){
+        cells.push({ inAt: Math.random(), outAt: Math.random(), ch: '', a: 0, block: false });
+      }
+      function reroll(c){
+        c.block = Math.random() < 0.05;
+        c.ch = c.block ? BLOCKS[Math.floor(Math.random() * BLOCKS.length)] : SET[Math.floor(Math.random() * SET.length)];
+        c.a = c.block ? 0.45 + Math.random() * 0.4 : (Math.random() < 0.2 ? 0 : 0.18 + Math.random() * 0.5);
+      }
+      cells.forEach(reroll);
+      const FILL = 380, HOLD = 520, OUT = 650;
+      const t0 = performance.now();
+      let covered = false;
+      g.font = "16px 'DotGothic16', 'DejaVu Sans Mono', monospace";
+      g.textBaseline = 'top';
+      (function frame(now){
+        const t = now - t0;
+        const pIn = Math.min(1, t / FILL);
+        const pOut = Math.max(0, (t - FILL - HOLD) / OUT);
+        if(!covered && t >= FILL){ covered = true; onCovered(); }
+        g.clearRect(0, 0, W, H);
+        for(let i = 0; i < cells.length; i++){
+          const c = cells[i];
+          if(c.inAt > pIn || c.outAt < pOut) continue;
+          if(Math.random() < 0.28) reroll(c);
+          const x = (i % cols) * CW, y = Math.floor(i / cols) * CH;
+          g.fillStyle = '#000'; g.fillRect(x, y, CW, CH);
+          if(c.a > 0){
+            g.fillStyle = 'rgba(255,255,255,' + c.a.toFixed(2) + ')';
+            g.fillText(c.ch, x + 1, y + 2);
+          }
+        }
+        if(pOut < 1) requestAnimationFrame(frame);
+        else { cv.remove(); onDone(); }
+      })(t0);
     }
     enterBtn.addEventListener('click', enter);
     document.addEventListener('keydown', onKey);
